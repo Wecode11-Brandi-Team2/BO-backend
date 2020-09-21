@@ -3,12 +3,12 @@ from flask_cors     import CORS
 
 from sqlalchemy     import create_engine
 
-from model          import TestDao
-from service        import TestService
-from controller     import create_endpoints
+from model          import UserDao
+from service        import UserService
+from controller     import create_user_endpoints
 
 
-def create_app(test_config=None):
+def create_app(test_config = None):
     app = Flask(__name__)
     app.debug = True
 
@@ -18,19 +18,19 @@ def create_app(test_config=None):
         app.config.update(test_config)
 
     # DB 연결
-    database = create_engine(
+    db_engine = create_engine(
         app.config['DB_URL'], encoding='utf-8', max_overflow=0)
 
     # CORS 설정
     CORS(app, resources={r'*': {'origins': '*'}})
 
     # Persistence layer
-    test_dao = TestDao(database)
+    user_dao = UserDao(db_engine)
 
     # Business layer
-    test_service = TestService(test_dao)
+    user_service = UserService(user_dao)
 
     # Presentation layer
-    create_endpoints(app, test_service)
+    app.register_blueprint(create_user_endpoints(user_service))
 
     return app

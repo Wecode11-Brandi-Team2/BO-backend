@@ -1,5 +1,5 @@
-from .test_dao import TestDao
+from .user_dao import UserDao
 
 __all__ = [
-    'TestDao',
+    'UserDao',
 ]

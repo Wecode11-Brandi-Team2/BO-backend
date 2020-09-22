@@ -1,7 +1,9 @@
 from flask          import Flask
 from flask_cors     import CORS
 
-from sqlalchemy     import create_engine
+from sqlalchemy          import create_engine
+from sqlalchemy.pool     import QueuePool
+from sqlalchemy.orm import sessionmaker
 
 from model          import UserDao
 from service        import UserService
@@ -18,19 +20,21 @@ def create_app(test_config = None):
         app.config.update(test_config)
 
     # DB 연결
-    db_engine = create_engine(
-        app.config['DB_URL'], encoding='utf-8', max_overflow=0)
+    database = create_engine(app.config['DB_URL'], encoding = 'utf-8', poolclass = QueuePool)
+
+    # database와 연동 된 session maker 생성, connection 필요시마다 session instance 생성
+    Session = sessionmaker(bind = database)
 
     # CORS 설정
     CORS(app, resources={r'*': {'origins': '*'}})
 
     # Persistence layer
-    user_dao = UserDao(db_engine)
+    user_dao = UserDao()
 
     # Business layer
     user_service = UserService(user_dao)
 
     # Presentation layer
-    app.register_blueprint(create_user_endpoints(user_service))
+    app.register_blueprint(create_user_endpoints(user_service, Session))
 
     return app

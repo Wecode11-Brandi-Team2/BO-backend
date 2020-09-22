@@ -2,17 +2,12 @@ from flask           import jsonify
 from sqlalchemy.orm  import sessionmaker
 
 class UserDao:
-    def __init__(self, database):
-        self.db_engine = database
-        self.Session = sessionmaker(bind = self.db_engine)
-
     """
     user table에서 필요한 field 조회 후 json 형태로 return
     """
-    def get_user_info(self):
+    def get_user_info(self, session):
         # taransaction start
         try:
-            session = self.Session()
             users = session.execute(
                 """
                 SELECT
@@ -30,5 +25,3 @@ class UserDao:
         except:
             session.rollback()
         # 실행 완료 후 transaction 종료
-        finally:
-            session.close()

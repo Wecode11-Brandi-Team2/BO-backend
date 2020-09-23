@@ -25,6 +25,7 @@ def create_order_endpoints(order_service, Session):
         Param('filterDateTo',   GET, str, required=False),  # 주문시간 구간조건
         Param('page',           GET, int, required=False),  # 페이지네이션
         Param('mdSeNo',         GET, list, required=False), # 셀러속성
+
     )
     def get_payment_complete_orders(*args, **kwargs):
         """

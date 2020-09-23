@@ -5,6 +5,7 @@ class OrderService:
         self.order_dao = order_dao
 
     def get_payment_complete_order_list(self, select_condition, sess):
+
         """
         결제완료주문 로직 구현
         결제완료주문 검색시 필요한 조건을 order_dao.select_payment_complete_orders에 전달하여

@@ -49,14 +49,15 @@ def create_order_endpoints(order_service, Session):
         """
 
         select_condition = {
-            'selectFilter': args[0],    # 검색 키워드 주제
-            'filterKeyword': args[1],   # 검색 키워드
-            'filterOrder': args[2],     # 정렬기준 : 주문일순 or 주문일역순
-            'filterLimit': args[3],     # 참조하는 최대 주문정보 갯수
-            'filterDateFrom': args[4],  # 주문시간 구간조건
-            'filterDateTo': args[5],    # 주문시간 구간조건
-            'page': args[6],            # 페이지네이션
-            'mdSeNo': args[7],          # 셀러속성
+            'orderStatus'   : 1,         # 주문완료주문 : 1
+            'selectFilter'  : args[0],   # 검색 키워드 주제
+            'filterKeyword' : args[1],   # 검색 키워드
+            'filterOrder'   : args[2],   # 정렬기준 : 주문일순 or 주문일역순
+            'filterLimit'   : args[3],   # 참조하는 최대 주문정보 갯수
+            'filterDateFrom': args[4],   # 주문시간 구간조건
+            'filterDateTo'  : args[5],   # 주문시간 구간조건
+            'page'          : args[6],   # 페이지네이션
+            'mdSeNo'        : args[7],   # 셀러속성
         }
 
         try:

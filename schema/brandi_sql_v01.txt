@@ -1,0 +1,779 @@
+﻿-- 테이블 순서는 관계를 고려하여 한 번에 실행해도 에러가 발생하지 않게 정렬되었습니다.
+
+-- platform Table Create SQL
+CREATE TABLE brandi.platform
+(
+    `id`             INT             NOT NULL    AUTO_INCREMENT, 
+    `platform_name`  VARCHAR(100)    NULL, 
+    `created_at`     DATETIME        NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.users
+(
+    `id`            INT             NOT NULL    AUTO_INCREMENT COMMENT 'ID', 
+    `name`          VARCHAR(45)     NOT NULL    COMMENT 'user 이름', 
+    `phone_number`  VARCHAR(48)     NULL        COMMENT '핸드폰 번호', 
+    `email`         VARCHAR(200)    NULL        COMMENT 'email', 
+    `password`      VARCHAR(256)    NULL        COMMENT '비밀번호', 
+    `gender`        VARCHAR(4)      NULL        COMMENT '성별', 
+    `login_id`      VARCHAR(45)     NOT NULL    COMMENT 'login ID', 
+    `platform_id`   INT             NULL        COMMENT '플랫폼 FK', 
+    `created_at`    DATETIME        NOT NULL    COMMENT '등록 일시', 
+    `is_deleted`    TINYINT         NOT NULL    COMMENT '삭제여부', 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.users
+    ADD CONSTRAINT FK_users_platform_id_platform_id FOREIGN KEY (platform_id)
+        REFERENCES brandi.platform (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.sellers
+(
+    `id`          INT         NOT NULL    AUTO_INCREMENT, 
+    `is_admin`    TINYINT     NOT NULL, 
+    `created_at`  DATETIME    NOT NULL, 
+    `is_deleted`  TINYINT     NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.shipping_address
+(
+    `id`            INT             NOT NULL    AUTO_INCREMENT COMMENT 'ID', 
+    `user_id`       INT             NOT NULL    COMMENT 'user FK', 
+    `address`       VARCHAR(256)    NOT NULL    COMMENT '배송지', 
+    `phone_number`  VARCHAR(48)     NOT NULL    COMMENT '핸드폰번호', 
+    `reciever`      VARCHAR(48)     NOT NULL    COMMENT '수령인', 
+    `ordering`      INT             NOT NULL    COMMENT '배송지리스트순서', 
+    `is_defalut`    TINYINT         NOT NULL    COMMENT '기본 배송지 설정', 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.shipping_address
+    ADD CONSTRAINT FK_shipping_address_user_id_users_id FOREIGN KEY (user_id)
+        REFERENCES brandi.users (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.orders
+(
+    `id`                   INT               NOT NULL    AUTO_INCREMENT COMMENT '주문 번호', 
+    `user_id`              INT               NOT NULL    COMMENT '구매자 정보 FK', 
+    `shipping_address_id`  INT               NOT NULL    COMMENT '배송지 주소 FK', 
+    `total_shipping_fee`   INT               NOT NULL    COMMENT '총 배송 금액', 
+    `total_discount`       INT               NOT NULL    COMMENT '총 할인 금액', 
+    `total_payment`        DECIMAL(18, 0)    NOT NULL    COMMENT '=총상품가격+배송비-총할인금액', 
+    `shipping_memo`        VARCHAR(45)       NULL        COMMENT '배송 메모', 
+    `orderer_name`         VARCHAR(45)       NOT NULL    COMMENT '주문자 이름', 
+    `orderer_phone`        VARCHAR(45)       NOT NULL    COMMENT '주문자 번호', 
+    `orderer_email`        VARCHAR(45)       NULL        COMMENT '주문자 이메일', 
+    `payment_date`         DATETIME          NULL        COMMENT '결제일', 
+    `created_at`           DATETIME          NOT NULL    COMMENT '주문 날짜', 
+    `is_deleted`           TINYINT           NOT NULL    COMMENT '삭제 여부', 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.orders
+    ADD CONSTRAINT FK_orders_user_id_users_id FOREIGN KEY (user_id)
+        REFERENCES brandi.users (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.orders
+    ADD CONSTRAINT FK_orders_shipping_address_id_shipping_address_id FOREIGN KEY (shipping_address_id)
+        REFERENCES brandi.shipping_address (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.order_status
+(
+    `id`           INT            NOT NULL    AUTO_INCREMENT, 
+    `status_name`  VARCHAR(45)    NULL        COMMENT '결제완료, 상품 준비, 배송중, 배송완료, 환불요청, 환불완료, 주문취소완료', 
+    `created_at`   DATETIME       NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.order_item_info
+(
+    `id`                       INT               NOT NULL    AUTO_INCREMENT, 
+    `order_detail_id`          VARCHAR(45)       NOT NULL    COMMENT '주문 상세 번호', 
+    `order_id`                 INT               NOT NULL    COMMENT '주문 번호', 
+    `order_status_id`          INT               NOT NULL    COMMENT '상태 FK', 
+    `product_id`               INT               NOT NULL    COMMENT '상품 FK', 
+    `price`                    DECIMAL(18, 0)    NOT NULL    COMMENT '가격', 
+    `option_color`             VARCHAR(45)       NOT NULL    COMMENT '옵션 색상', 
+    `option_size`              VARCHAR(45)       NOT NULL    COMMENT '옵션 사이즈', 
+    `option_additional_price`  DECIMAL(18, 0)    NOT NULL    COMMENT '옵션 추가 금액', 
+    `units`                    INT               NOT NULL    COMMENT '구매수량', 
+    `discount_price`           INT               NOT NULL    COMMENT '할인 금액', 
+    `start_date`               DATETIME          NOT NULL    COMMENT '선분이력 시작시간', 
+    `end_date`                 DATETIME          NOT NULL    COMMENT '선분이력 종료시간', 
+    `modifier_id`              INT               NULL        COMMENT '수정자', 
+    `is_deleted`               TINYINT           NOT NULL    COMMENT '삭제 여부', 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.order_item_info
+    ADD CONSTRAINT FK_order_item_info_order_id_orders_id FOREIGN KEY (order_id)
+        REFERENCES brandi.orders (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.order_item_info
+    ADD CONSTRAINT FK_order_item_info_order_status_id_order_status_id FOREIGN KEY (order_status_id)
+        REFERENCES brandi.order_status (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.order_item_info
+    ADD CONSTRAINT FK_order_item_info_modifier_id_sellers_id FOREIGN KEY (modifier_id)
+        REFERENCES brandi.sellers (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.main_categories
+(
+    `id`                  INT            NOT NULL    AUTO_INCREMENT, 
+    `main_category_name`  VARCHAR(45)    NOT NULL    COMMENT '홈/랭킹/하루배송/샵/브랜드/뷰티', 
+    `created_at`          DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.first_categories
+(
+    `id`                   INT            NOT NULL    AUTO_INCREMENT, 
+    `first_category_name`  VARCHAR(45)    NOT NULL, 
+    `main_category_id`     INT            NOT NULL, 
+    `created_at`           DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.first_categories
+    ADD CONSTRAINT FK_first_categories_main_category_id_main_categories_id FOREIGN KEY (main_category_id)
+        REFERENCES brandi.main_categories (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.products
+(
+    `id`          INT            NOT NULL    AUTO_INCREMENT, 
+    `created_at`  VARCHAR(45)    NOT NULL, 
+    `is_deleted`  TINYINT        NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.second_catogories
+(
+    `id`                    INT            NOT NULL    AUTO_INCREMENT, 
+    `second_category_name`  VARCHAR(45)    NOT NULL, 
+    `first_category_id`     INT            NOT NULL, 
+    `created_at`            DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.second_catogories
+    ADD CONSTRAINT FK_second_catogories_first_category_id_first_categories_id FOREIGN KEY (first_category_id)
+        REFERENCES brandi.first_categories (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.event_types
+(
+    `id`          INT            NOT NULL    AUTO_INCREMENT, 
+    `type_name`   VARCHAR(45)    NOT NULL    COMMENT '이벤트,쿠폰,상품(이미지),상품(텍스트),유튜브', 
+    `created_at`  DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.event_sorts
+(
+    `id`          INT            NOT NULL    AUTO_INCREMENT, 
+    `sort_name`   VARCHAR(45)    NOT NULL    COMMENT '상품, 버튼 / 댓글창있음, 댓글창 없음', 
+    `created_at`  DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.product_info
+(
+    `id`                   INT               NOT NULL    AUTO_INCREMENT, 
+    `product_id`           INT               NOT NULL    COMMENT 'product FK', 
+    `seller_id`            INT               NOT NULL    COMMENT 'seller FK', 
+    `first_category_id`    INT               NOT NULL    COMMENT '1차카테고리FK', 
+    `second_category_id`   INT               NOT NULL    COMMENT '카테고리 FK', 
+    `main_img`             VARCHAR(2048)       NOT NULL    COMMENT '상품 메인 이미지', 
+    `name`                 VARCHAR(45)       NOT NULL    COMMENT '상품명', 
+    `product_code`         VARCHAR(45)       NOT NULL    COMMENT '상품 코드', 
+    `price`                DECIMAL(18, 0)    NOT NULL    COMMENT '가격', 
+    `simple_description`   VARCHAR(45)       NULL        COMMENT '한줄 설명', 
+    `detail_description`   TEXT              NULL        COMMENT '상세 설명 (HTML)', 
+    `stock_number`         INT               NOT NULL    COMMENT '재고량', 
+    `min_unit`             INT               NOT NULL    COMMENT '최소 판매 수량', 
+    `max_unit`             INT               NOT NULL    COMMENT '최대 판매 수량', 
+    `review_number`        INT               NOT NULL    COMMENT '리뷰 갯수', 
+    `discount_rate`        DECIMAL(18, 0)    NULL        COMMENT '할인율', 
+    `discount_price`       DECIMAL(18, 0)    NULL        COMMENT '할인가', 
+    `discount_start_date`  DATE              NULL        COMMENT '할인시작일', 
+    `discount_end_date`    DATE              NULL        COMMENT '할인종료일', 
+    `is_definite`          TINYINT           NULL        COMMENT '할인무기한여부', 
+    `sales_amount`         INT               NOT NULL    COMMENT '판매량', 
+    `is_displayed`         TINYINT           NOT NULL    COMMENT '진열 여부', 
+    `is_stock_managed`     TINYINT           NOT NULL    COMMENT '재고 관리 여부', 
+    `is_on_sale`           TINYINT           NOT NULL    COMMENT '판매 여부', 
+    `is_promotion`         TINYINT           NOT NULL    COMMENT '할인 여부', 
+    `created_at`           DATETIME          NOT NULL    COMMENT '점이력', 
+    `modifier_id`          INT               NOT NULL    COMMENT '수정자', 
+    `is_deleted`           TINYINT           NULL        COMMENT '삭제 여부', 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.product_info
+    ADD CONSTRAINT FK_product_info_product_id_products_id FOREIGN KEY (product_id)
+        REFERENCES brandi.products (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.product_info
+    ADD CONSTRAINT FK_product_info_second_category_id_second_catogories_id FOREIGN KEY (second_category_id)
+        REFERENCES brandi.second_catogories (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.product_info
+    ADD CONSTRAINT FK_product_info_first_category_id_first_categories_id FOREIGN KEY (first_category_id)
+        REFERENCES brandi.first_categories (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.product_info
+    ADD CONSTRAINT FK_product_info_seller_id_sellers_id FOREIGN KEY (seller_id)
+        REFERENCES brandi.sellers (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.product_info
+    ADD CONSTRAINT FK_product_info_modifier_id_sellers_id FOREIGN KEY (modifier_id)
+        REFERENCES brandi.sellers (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.events
+(
+    `id`                      INT              NOT NULL    AUTO_INCREMENT, 
+    `type_id`                 INT              NOT NULL    COMMENT '타입', 
+    `sort_id`                 INT              NOT NULL    COMMENT '종류', 
+    `status_id`               INT              NOT NULL    COMMENT '이벤트 상태 FK', 
+    `is_displayed`            TINYINT          NOT NULL    COMMENT '기획전 노출 여부 (노출/비노출)', 
+    `name`                    VARCHAR(45)      NOT NULL    COMMENT '기획전 이름', 
+    `simple_description`      VARCHAR(45)      NULL        COMMENT '한 줄 설명', 
+    `detail_description`      VARCHAR(45)      NULL        COMMENT '상세 설명', 
+    `start_date`              DATE             NOT NULL    COMMENT '기획전 시작 날짜', 
+    `end_date`                DATE             NOT NULL    COMMENT '기획전 마감 날짜', 
+    `view_number`             INT              NOT NULL    COMMENT '조회 수', 
+    `mapping_product_number`  INT              NOT NULL    COMMENT '매핑 상품 수', 
+    `banner_image`            VARCHAR(2048)    NOT NULL    COMMENT '배너 이미지', 
+    `detail_image`            VARCHAR(2048)    NOT NULL    COMMENT '상세 이미지', 
+    `video_url`               VARCHAR(2048)    NULL        COMMENT '유튜브 URL (기획전 타입이 유튜브)', 
+    `comment_id`              INT              NULL        COMMENT '이벤트 댓글 FK', 
+    `created_at`              DATETIME         NOT NULL, 
+    `is_deleted`              TINYINT          NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.events
+    ADD CONSTRAINT FK_events_type_id_event_types_id FOREIGN KEY (type_id)
+        REFERENCES brandi.event_types (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.events
+    ADD CONSTRAINT FK_events_sort_id_event_sorts_id FOREIGN KEY (sort_id)
+        REFERENCES brandi.event_sorts (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.question_types
+(
+    `id`          INT            NOT NULL    AUTO_INCREMENT, 
+    `type_name`   VARCHAR(45)    NOT NULL    COMMENT '상품문의, 교환/반품, 불량/오배송, 기타, 배송문의, 하루배송,취소/변경', 
+    `created_at`  DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.event_button_link_types
+(
+    `id`              INT            NOT NULL    AUTO_INCREMENT, 
+    `link_type_name`  VARCHAR(45)    NOT NULL    COMMENT 'GNB홈 - tab 홈, tab 베스트', 
+    `URL`             VARCHAR(45)    NULL        COMMENT '링크 url', 
+    `created_at`      DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.coupon_issue_types
+(
+    `id`              INT            NOT NULL    AUTO_INCREMENT, 
+    `issu_type_name`  VARCHAR(45)    NULL        COMMENT '일반/쿠폰코드/시리얼번호', 
+    `created_at`      VARCHAR(45)    NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.coupon_issue_types COMMENT '발급 유형';
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.coupon_issue_method
+(
+    `id`                 INT            NOT NULL    AUTO_INCREMENT, 
+    `issue_method_name`  VARCHAR(45)    NULL        COMMENT '다운로드/직접발급', 
+    `created_at`         VARCHAR(45)    NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.coupon_issue_method COMMENT '발급 방법';
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.button_types
+(
+    `id`           INT            NOT NULL    AUTO_INCREMENT, 
+    `button_type`  VARCHAR(16)    NOT NULL    COMMENT '링크,매핑필터', 
+    `created_at`   DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.managers
+(
+    `id`            INT            NOT NULL    AUTO_INCREMENT, 
+    `name`          VARCHAR(45)    NOT NULL, 
+    `phone_number`  VARCHAR(45)    NOT NULL, 
+    `email`         VARCHAR(45)    NOT NULL, 
+    `ordering`      INT            NOT NULL, 
+    `is_deleted`    TINYINT        NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.seller_status
+(
+    `id`           INT            NOT NULL    AUTO_INCREMENT, 
+    `status_name`  VARCHAR(45)    NOT NULL    COMMENT '입점대기,입점,퇴점,퇴점대기,휴점', 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.seller_attributes
+(
+    `id`                  INT            NOT NULL    AUTO_INCREMENT, 
+    `attribute_group_id`  INT            NOT NULL    COMMENT '메인카테고리FK', 
+    `atturibution_name`   VARCHAR(45)    NOT NULL    COMMENT '쇼핑몰,마켓,로드샵,디자이너브랜드,제너럴브랜드,내셔널브랜드,뷰티', 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.seller_attributes
+    ADD CONSTRAINT FK_seller_attributes_attribute_group_id_main_categories_id FOREIGN KEY (attribute_group_id)
+        REFERENCES brandi.main_categories (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.refund_reasons
+(
+    `id`                  INT            NOT NULL    AUTO_INCREMENT, 
+    `refund_reason_name`  VARCHAR(45)    NULL        COMMENT '단순변심,상품불량,오배송,교환요청,일부상품누락,기타', 
+    `created_at`          DATETIME       NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.cancel_reasons
+(
+    `id`                  INT            NOT NULL    AUTO_INCREMENT, 
+    `cancel_reason_name`  VARCHAR(45)    NULL        COMMENT '구매자취소, 구매자변심, 상품품절', 
+    `created_at`          DATETIME       NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.review_status
+(
+    `id`           INT            NOT NULL    AUTO_INCREMENT, 
+    `status_name`  VARCHAR(45)    NOT NULL    COMMENT '잘맞아요, 조금 커요, 조금 작아요', 
+    `created_at`   DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.questions
+(
+    `id`          INT         NOT NULL    AUTO_INCREMENT, 
+    `type_id`     INT         NOT NULL, 
+    `user_id`     INT         NOT NULL, 
+    `product_id`  INT         NOT NULL, 
+    `content`     TEXT        NOT NULL    COMMENT '내용', 
+    `is_private`  TINYINT     NOT NULL    COMMENT '공개, 비공개', 
+    `created_at`  DATETIME    NOT NULL, 
+    `is_deleted`  TINYINT     NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.questions
+    ADD CONSTRAINT FK_questions_type_id_question_types_id FOREIGN KEY (type_id)
+        REFERENCES brandi.question_types (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.questions
+    ADD CONSTRAINT FK_questions_user_id_users_id FOREIGN KEY (user_id)
+        REFERENCES brandi.users (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.questions
+    ADD CONSTRAINT FK_questions_product_id_products_id FOREIGN KEY (product_id)
+        REFERENCES brandi.products (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.event_button
+(
+    `id`              INT            NOT NULL    AUTO_INCREMENT, 
+    `event_id`        INT            NOT NULL    COMMENT '이벤트 FK', 
+    `display_order`   VARCHAR(45)    NOT NULL    COMMENT '진열 순서', 
+    `button_name`     VARCHAR(45)    NOT NULL    COMMENT '이벤트 버튼  이름', 
+    `button_type_id`  INT            NOT NULL    COMMENT '버튼타입 FK', 
+    `link_type_id`    INT            NULL        COMMENT '이벤트 버튼 링크 FK', 
+    `button_content`  VARCHAR(45)    NULL        COMMENT '이벤트 버튼 내용', 
+    `created_at`      DATETIME       NOT NULL, 
+    `is_deleted`      TINYINT        NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.event_button
+    ADD CONSTRAINT FK_event_button_link_type_id_event_button_link_types_id FOREIGN KEY (link_type_id)
+        REFERENCES brandi.event_button_link_types (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.event_button
+    ADD CONSTRAINT FK_event_button_event_id_events_id FOREIGN KEY (event_id)
+        REFERENCES brandi.events (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.event_button
+    ADD CONSTRAINT FK_event_button_button_type_id_button_types_id FOREIGN KEY (button_type_id)
+        REFERENCES brandi.button_types (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.coupons
+(
+    `id`                     INT               NOT NULL    AUTO_INCREMENT, 
+    `coupon_name`            VARCHAR(45)       NOT NULL, 
+    `validation_start_date`  DATETIME          NOT NULL    COMMENT '유효시작일', 
+    `validation_end_date`    DATETIME          NOT NULL    COMMENT '유효종료일', 
+    `download_start_date`    DATETIME          NOT NULL    COMMENT '다운로드시작일', 
+    `download_end_date`      DATETIME          NOT NULL    COMMENT '다운로드종료일', 
+    `is_limited`             TINYINT           NOT NULL    COMMENT '제한 여부', 
+    `used_number`            INT               NOT NULL    COMMENT '사용 갯수', 
+    `maximum_number`         INT               NOT NULL    COMMENT '제한 갯수', 
+    `issue_number`           INT               NOT NULL    COMMENT '발급 갯수', 
+    `issue_type_id`          INT               NOT NULL    COMMENT '발급 유형 FK', 
+    `issue_method_id`        INT               NOT NULL    COMMENT '발급 방법 FK', 
+    `description`            VARCHAR(2048)     NULL        COMMENT '쿠폰 상세 설명', 
+    `discount_price`         INT               NOT NULL    COMMENT '할인금액', 
+    `min_cost`               DECIMAL(18, 0)    NOT NULL    COMMENT '최소 사용 금액', 
+    `created_at`             DATETIME          NOT NULL, 
+    `is_deleted`             TINYINT           NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.coupons
+    ADD CONSTRAINT FK_coupons_issue_method_id_coupon_issue_method_id FOREIGN KEY (issue_method_id)
+        REFERENCES brandi.coupon_issue_method (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.coupons
+    ADD CONSTRAINT FK_coupons_issue_type_id_coupon_issue_types_id FOREIGN KEY (issue_type_id)
+        REFERENCES brandi.coupon_issue_types (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.product_images
+(
+    `id`               INT              NOT NULL    AUTO_INCREMENT, 
+    `URL`              VARCHAR(2048)    NULL, 
+    `product_info_id`  INT              NOT NULL, 
+    `ordering`         INT              NOT NULL, 
+    `created_at`       DATETIME         NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.product_images
+    ADD CONSTRAINT FK_product_images_product_info_id_product_info_id FOREIGN KEY (product_info_id)
+        REFERENCES brandi.product_info (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.colors
+(
+    `id`               INT            NOT NULL    AUTO_INCREMENT, 
+    `color_name`       VARCHAR(45)    NULL, 
+    `product_info_id`  INT            NOT NULL, 
+    `created_at`       DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.colors
+    ADD CONSTRAINT FK_colors_product_info_id_product_info_id FOREIGN KEY (product_info_id)
+        REFERENCES brandi.product_info (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.sizes
+(
+    `id`               INT            NOT NULL    AUTO_INCREMENT, 
+    `size_name`        VARCHAR(45)    NULL, 
+    `product_info_id`  INT            NOT NULL, 
+    `created_at`       DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.sizes
+    ADD CONSTRAINT FK_sizes_product_info_id_product_info_id FOREIGN KEY (product_info_id)
+        REFERENCES brandi.product_info (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.seller_info
+(
+    `id`                                INT              NOT NULL    AUTO_INCREMENT, 
+    `seller_id`                         INT              NOT NULL    COMMENT 'seller FK', 
+    `manager_id`                        INT              NOT NULL    COMMENT '담당자 FK', 
+    `seller_status_id`                  INT              NOT NULL    COMMENT 'seller 상태 FK', 
+    `seller_attribute_id`               INT              NOT NULL    COMMENT 'seller 속성 FK', 
+    `korean_name`                       VARCHAR(255)     NOT NULL    COMMENT '한글 이름', 
+    `eng_name`                          VARCHAR(255)     NOT NULL    COMMENT '영어 이름', 
+    `image_url`                         VARCHAR(2048)    NOT NULL    COMMENT '이미지', 
+    `seller_loginID`                    VARCHAR(255)     NOT NULL    COMMENT '로그인 ID', 
+    `seller_page_background_image_url`  VARCHAR(2048)    NULL        COMMENT '배경 이미지', 
+    `simple_description`                VARCHAR(255)     NULL        COMMENT '한줄 설명', 
+    `detail_description`                TEXT             NULL        COMMENT '상세 설명', 
+    `service_center_phone`              VARCHAR(45)      NOT NULL    COMMENT '서비스 센터 전화번호', 
+    `site_url`                          VARCHAR(2048)    NOT NULL    COMMENT '셀러 사이트 URL', 
+    `postal_code`                       INT              NOT NULL    COMMENT '우편번호', 
+    `address`                           VARCHAR(2048)    NOT NULL    COMMENT '주소', 
+    `service_center_open_time`          TIME             NOT NULL    COMMENT '서비스센터 오픈시간', 
+    `service_center_close_time`         TIME             NOT NULL    COMMENT '서비스센터 폐점시간', 
+    `bank`                              VARCHAR(45)      NOT NULL    COMMENT '은행', 
+    `account_holder`                    VARCHAR(45)      NOT NULL    COMMENT '계좌주', 
+    `account_number`                    VARCHAR(45)      NOT NULL    COMMENT '계좌번호', 
+    `shipping_info`                     TEXT             NOT NULL    COMMENT '배송 정보', 
+    `refund_policy`                     TEXT             NOT NULL    COMMENT '교환 환불 정보', 
+    `model_height`                      INT              NULL        COMMENT '모델 키', 
+    `model_foots_size`                  INT              NULL        COMMENT '모델 발사이즈', 
+    `model_top_size`                    INT              NULL        COMMENT '모델 상의 사이즈', 
+    `model_pants_size`                  INT              NULL        COMMENT '모델 하의 사이즈', 
+    `start_at`                          DATETIME         NOT NULL    COMMENT '선분이력 시작시간', 
+    `end_date`                          DATETIME         NOT NULL    COMMENT '선분이력 종료시간', 
+    `modifier_id`                       INT              NULL        COMMENT '수정자', 
+    `is_deleted`                        TINYINT          NOT NULL    COMMENT '삭제 여부', 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.seller_info
+    ADD CONSTRAINT FK_seller_info_manager_id_managers_id FOREIGN KEY (manager_id)
+        REFERENCES brandi.managers (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.seller_info
+    ADD CONSTRAINT FK_seller_info_seller_status_id_seller_status_id FOREIGN KEY (seller_status_id)
+        REFERENCES brandi.seller_status (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.seller_info
+    ADD CONSTRAINT FK_seller_info_seller_attribute_id_seller_attributes_id FOREIGN KEY (seller_attribute_id)
+        REFERENCES brandi.seller_attributes (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.seller_info
+    ADD CONSTRAINT FK_seller_info_seller_id_sellers_id FOREIGN KEY (seller_id)
+        REFERENCES brandi.sellers (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.seller_info
+    ADD CONSTRAINT FK_seller_info_modifier_id_sellers_id FOREIGN KEY (modifier_id)
+        REFERENCES brandi.sellers (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.reviews
+(
+    `id`                  INT               NOT NULL    AUTO_INCREMENT, 
+    `user_id`             INT               NOT NULL, 
+    `order_item_info_id`  INT               NOT NULL, 
+    `review_status_id`    INT               NOT NULL, 
+    `content`             TEXT              NOT NULL, 
+    `rating`              DECIMAL(18, 0)    NOT NULL, 
+    `created_at`          DATETIME          NULL, 
+    `is_deleted`          TINYINT           NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.reviews
+    ADD CONSTRAINT FK_reviews_user_id_users_id FOREIGN KEY (user_id)
+        REFERENCES brandi.users (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.reviews
+    ADD CONSTRAINT FK_reviews_review_status_id_review_status_id FOREIGN KEY (review_status_id)
+        REFERENCES brandi.review_status (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.reviews
+    ADD CONSTRAINT FK_reviews_order_item_info_id_order_item_info_id FOREIGN KEY (order_item_info_id)
+        REFERENCES brandi.order_item_info (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.answers
+(
+    `id`          INT         NOT NULL, 
+    `replier_id`  INT         NULL, 
+    `content`     TEXT        NOT NULL, 
+    `is_private`  TINYINT     NOT NULL, 
+    `created_at`  DATETIME    NOT NULL, 
+    `is_deleted`  TINYINT     NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.answers
+    ADD CONSTRAINT FK_answers_id_questions_id FOREIGN KEY (id)
+        REFERENCES brandi.questions (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.answers
+    ADD CONSTRAINT FK_answers_replier_id_sellers_id FOREIGN KEY (replier_id)
+        REFERENCES brandi.sellers (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.event_product_mappings
+(
+    `id`          INT         NOT NULL    AUTO_INCREMENT, 
+    `event_id`    INT         NOT NULL, 
+    `product_id`  INT         NOT NULL, 
+    `button_id`   INT         NULL, 
+    `created_at`  DATETIME    NOT NULL, 
+    `is_deleted`  TINYINT     NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.event_product_mappings
+    ADD CONSTRAINT FK_event_product_mappings_button_id_event_button_id FOREIGN KEY (button_id)
+        REFERENCES brandi.event_button (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.event_product_mappings
+    ADD CONSTRAINT FK_event_product_mappings_product_id_products_id FOREIGN KEY (product_id)
+        REFERENCES brandi.products (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.event_product_mappings
+    ADD CONSTRAINT FK_event_product_mappings_event_id_events_id FOREIGN KEY (event_id)
+        REFERENCES brandi.events (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.user_coupon_mappings
+(
+    `id`                  INT         NOT NULL    AUTO_INCREMENT, 
+    `user_id`             INT         NOT NULL, 
+    `coupon_id`           INT         NOT NULL, 
+    `order_item_info_id`  INT         NOT NULL    COMMENT '쿠폰을 어디에 썼느지', 
+    `created_at`          DATETIME    NOT NULL, 
+    `is_deleted`          TINYINT     NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.user_coupon_mappings
+    ADD CONSTRAINT FK_user_coupon_mappings_coupon_id_coupons_id FOREIGN KEY (coupon_id)
+        REFERENCES brandi.coupons (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.user_coupon_mappings
+    ADD CONSTRAINT FK_user_coupon_mappings_user_id_users_id FOREIGN KEY (user_id)
+        REFERENCES brandi.users (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.user_coupon_mappings
+    ADD CONSTRAINT FK_user_coupon_mappings_order_item_info_id_order_item_info_id FOREIGN KEY (order_item_info_id)
+        REFERENCES brandi.order_item_info (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.event_comment
+(
+    `id`          INT         NOT NULL    AUTO_INCREMENT, 
+    `text`        TEXT        NOT NULL    COMMENT '댓글', 
+    `user_id`     INT         NOT NULL    COMMENT '유저 FK', 
+    `event_id`    INT         NOT NULL    COMMENT '이벤트 FK', 
+    `created_at`  DATETIME    NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.event_comment
+    ADD CONSTRAINT FK_event_comment_event_id_events_id FOREIGN KEY (event_id)
+        REFERENCES brandi.events (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.event_comment
+    ADD CONSTRAINT FK_event_comment_user_id_users_id FOREIGN KEY (user_id)
+        REFERENCES brandi.users (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.shipping_orders
+(
+    `id`                      INT            NOT NULL    AUTO_INCREMENT, 
+    `order_item_info_id`      INT            NOT NULL, 
+    `shipping_start_date`     DATETIME       NULL        COMMENT '배송 시작일', 
+    `shipping_complete_date`  DATETIME       NULL        COMMENT '배송 완료 날짜', 
+    `shipping_company`        VARCHAR(32)    NULL        COMMENT '택배사', 
+    `shipping_number`         INT            NULL        COMMENT '송장번호', 
+    `is_confirm_order`        TINYINT        NULL        COMMENT '구매 확정 여부', 
+    `created_at`              DATETIME       NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.shipping_orders COMMENT '결제완료, 상품관리, 배송중, 배송완료 관리';
+
+ALTER TABLE brandi.shipping_orders
+    ADD CONSTRAINT FK_shipping_orders_order_item_info_id_order_item_info_id FOREIGN KEY (order_item_info_id)
+        REFERENCES brandi.order_item_info (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- platform Table Create SQL
+CREATE TABLE brandi.refund_cancel_orders
+(
+    `id`                          INT              NOT NULL    AUTO_INCREMENT, 
+    `order_item_info_id`          INT              NOT NULL, 
+    `refund_request_date`         DATETIME         NULL        COMMENT '환불 요청 날짜', 
+    `refund_complete_date`        DATETIME         NULL        COMMENT '환불 완료 날짜', 
+    `shipping_start_date`         DATETIME         NULL        COMMENT '배송 시작일', 
+    `refund_reason_id`            INT              NULL        COMMENT '환불 사유 FK', 
+    `refund_amount`               INT              NULL        COMMENT '환불 금액', 
+    `refund_shipping_fee`         INT              NULL        COMMENT '반품 배송비', 
+    `detail_reason`               VARCHAR(1024)    NULL        COMMENT '구체적인 환불 사유', 
+    `bank`                        VARCHAR(45)      NULL        COMMENT '은행', 
+    `account_holder`              VARCHAR(45)      NULL        COMMENT '계좌주', 
+    `account_number`              VARCHAR(45)      NULL        COMMENT '계좌번호', 
+    `cancel_reason_id`            INT              NULL        COMMENT '주문 취소 사유 FK', 
+    `complete_cancellation_date`  DATETIME         NULL        COMMENT '주문 취소 완료일', 
+    `created_at`                  DATETIME         NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE brandi.refund_cancel_orders COMMENT '환불요청, 환불완료, 주문취소 관리';
+
+ALTER TABLE brandi.refund_cancel_orders
+    ADD CONSTRAINT FK_refund_cancel_orders_order_item_info_id_order_item_info_id FOREIGN KEY (order_item_info_id)
+        REFERENCES brandi.order_item_info (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.refund_cancel_orders
+    ADD CONSTRAINT FK_refund_cancel_orders_refund_reason_id_refund_reasons_id FOREIGN KEY (refund_reason_id)
+        REFERENCES brandi.refund_reasons (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE brandi.refund_cancel_orders
+    ADD CONSTRAINT FK_refund_cancel_orders_cancel_reason_id_cancel_reasons_id FOREIGN KEY (cancel_reason_id)
+        REFERENCES brandi.cancel_reasons (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+

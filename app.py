@@ -1,11 +1,14 @@
-from flask          import Flask
-from flask_cors     import CORS
+from flask import Flask
+from flask_cors import CORS
+from sqlalchemy import create_engine
+from sqlalchemy.pool import QueuePool
+from sqlalchemy.orm import sessionmaker
 
-from sqlalchemy     import create_engine
 
-from model          import TestDao
-from service        import TestService
-from controller     import create_endpoints
+from model import OrderDao
+from service import OrderService
+from controller import create_order_endpoints
+from config import DB_URL
 
 
 def create_app(test_config=None):
@@ -17,20 +20,23 @@ def create_app(test_config=None):
     else:
         app.config.update(test_config)
 
-    # DB 연결
-    database = create_engine(
-        app.config['DB_URL'], encoding='utf-8', max_overflow=0)
+    # pool size : 5, max_overflow=10 인 QueuePool로 DB 연결 설정
+    db_engin = create_engine(app.config['DB_URL'], encoding ='utf-8', pool_size=20, max_overflow=10, poolclass = QueuePool)
+
+    # database engin와 연동된 session maker 생성, connection 필요시마다 session instance 생성
+    Session = sessionmaker(bind = db_engin)
 
     # CORS 설정
     CORS(app, resources={r'*': {'origins': '*'}})
 
     # Persistence layer
-    test_dao = TestDao(database)
+    order_dao = OrderDao()
 
     # Business layer
-    test_service = TestService(test_dao)
+    order_service = OrderService(order_dao)
 
     # Presentation layer
-    create_endpoints(app, test_service)
+    app.register_blueprint(create_order_endpoints(order_service, Session))
 
     return app
+

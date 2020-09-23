@@ -1,5 +1,5 @@
-from .test_service import TestService
+from .order_service import OrderService
 
-__all__ = [ 
-    'TestService',
+__all__ = [
+    'OrderService',
 ]

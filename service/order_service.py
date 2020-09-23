@@ -8,7 +8,7 @@ class OrderService:
 
         """
         결제완료주문 로직 구현
-        결제완료주문 검색시 필요한 조건을 order_dao.select_payment_complete_orders에 전달하여
+        결제완료주문 검색시 필요한 조건을 order_dao.select_orders에 전달하여
         쿼리 결과를 controller에게 전달
         
         args :
@@ -25,4 +25,6 @@ class OrderService:
         2020-09-22 (이용민): 초기 생성
         """
         
-        return self.order_dao.select_payment_complete_orders(select_condition, sess)
+        return self.order_dao.select_orders(select_condition, sess)
+
+    

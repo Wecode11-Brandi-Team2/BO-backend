@@ -3,18 +3,18 @@ from flask import jsonify
 
 class OrderDao:
 
-    def select_payment_complete_orders(self, select_condition, sess):
-      
+    def select_orders(self, select_condition, sess):
+    
         """
-        결제완료주문 조회
-        인자로 받은 결제완료주문 검색 조건들을 만족하는 결제완료주문들을 데이터베이스에소 조회합니다
+        주문 조회
+        인자로 받은 주문 검색 조건들을 만족하는 주문들을 데이터베이스에소 조회합니다
         
         args :
-        select_condition : 결제완료주문 검색에 필요한 조건들
+        select_condition : 주문 검색에 필요한 조건들
         sess : connection 형성된 session 객체
         
         returns :
-        검색조건에 해당하는 결제완료주문정보 리스트
+        검색조건에 해당하는 주문정보 리스트
          
         Authors:
         eymin1259@gmail.com 이용민
@@ -22,7 +22,7 @@ class OrderDao:
         History:
         2020-09-23 (이용민): 초기 생성
         """
-
+  
         # 검색 필터 조건 적용 전 쿼리문
         query = """ SELECT 
                         orders.payment_date,
@@ -53,12 +53,13 @@ class OrderDao:
 
                     INNER JOIN ( SELECT * FROM seller_info WHERE end_date = '9999-12-31 23:59:59') AS recent_seller_info 
                     ON recent_seller_info.seller_id = recent_product_info.seller_id                        
-
-                    WHERE recent_order_item_info.order_status_id = 1
                 """
 
         # 검색 조건 검사
         condition_statement = ''
+
+        # 주문 유형 조건
+        condition_statement += f"WHERE recent_order_item_info.order_status_id = {select_condition['orderStatus']}"
 
         # 검색조건
         if select_condition['selectFilter'] != None:
@@ -112,7 +113,7 @@ class OrderDao:
             else:
                 offset = select_condition['page'] * select_condition['filterLimit']
                 condition_statement += f" LIMIT {select_condition['filterLimit']} OFFSET {offset}"
-                
+
         query += condition_statement
 
         # query 실행, database engine으로부터 connection 생성 및 transaction 시작

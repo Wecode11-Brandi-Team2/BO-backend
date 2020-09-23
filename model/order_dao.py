@@ -4,7 +4,7 @@ from flask import jsonify
 class OrderDao:
 
     def select_payment_complete_orders(self, select_condition, sess):
-      
+          
         """
         결제완료주문 조회
         인자로 받은 결제완료주문 검색 조건들을 만족하는 결제완료주문들을 데이터베이스에소 조회합니다

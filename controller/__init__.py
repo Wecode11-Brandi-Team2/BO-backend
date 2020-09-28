@@ -1,5 +1,7 @@
 from .order_controller import create_order_endpoints
+from .user_controller import create_user_endpoints
 
 __all__ = [
-    'create_order_endpoints'
+    'create_order_endpoints',
+    'create_user_endpoints'
 ]

@@ -20,7 +20,7 @@ def create_app(test_config=None):
     else:
         app.config.update(test_config)
 
-    # pool size : 5, max_overflow=10 인 QueuePool로 DB 연결 설정
+    # QueuePool로 DB 연결 설정
     db_engin = create_engine(app.config['DB_URL'], encoding ='utf-8', pool_size=1000, max_overflow=100, poolclass = QueuePool)
 
     # database engin와 연동된 session maker 생성, connection 필요시마다 session instance 생성

@@ -3,24 +3,28 @@ from flask_cors import CORS
 
 from sqlalchemy          import create_engine
 from sqlalchemy.pool     import QueuePool
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm      import sessionmaker
 
 from model          import (
     OrderDao,
-    UserDao
+    UserDao,
+    SellerDao
 )
 from service        import (
     OrderService,
-    UserService
+    UserService,
+    SellerService
 )
 from controller     import (
     create_order_endpoints,
-    create_user_endpoints
+    create_user_endpoints,
+    create_seller_endpoints
 )
+
+import utils
 
 def create_app(test_config = None):
     app = Flask(__name__)
-    app.debug = True
 
     if test_config is None:
         app.config.from_pyfile('config.py')
@@ -39,13 +43,16 @@ def create_app(test_config = None):
     # Persistence layer
     order_dao = OrderDao()
     user_dao = UserDao()
+    seller_dao = SellerDao()
 
     # Business layer
     order_service = OrderService(order_dao)
     user_service = UserService(user_dao)
+    seller_service = SellerService(seller_dao)
 
     # Presentation layer
     app.register_blueprint(create_order_endpoints(order_service, Session))
     app.register_blueprint(create_user_endpoints(user_service, Session))
+    app.register_blueprint(create_seller_endpoints(seller_service, Session))
 
     return app

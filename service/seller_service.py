@@ -108,3 +108,21 @@ class SellerService:
         """
         seller_list_result = self.seller_dao.get_seller_list(valid_param, session)
         return seller_list_result
+
+    def get_seller_info(self, seller_info, session):
+        """ 계정의 셀러정보 표출
+        controller에서 받은 seller_info를 dao의 get_seller_info 함수로 전달
+
+        Args:
+            seller_info: seller 정보
+            session: db connection 객체
+        Returns:
+            seller_info_result (r'type : dict)
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-09-30 (hj885353@gmail.com) : 초기 생성
+        """
+        seller_info_result = self.seller_dao.get_seller_info(seller_info, session)
+
+        return seller_info_result

@@ -1,4 +1,5 @@
 import bcrypt
+import datetime
 from flask           import jsonify
 from sqlalchemy import text
 
@@ -252,3 +253,73 @@ class SellerDao:
 
         seller_count['filtered_seller_count'] = filter_query_values_count['filtered_seller_count']
         return seller_info, seller_count
+
+    def get_seller_info(self, seller_info, session):
+        """ 계정의 셀러정보 표출
+        seller_info['parameter_seller_no']로 seller_no를 인자로 받아 해당 seller의 정보 표출
+
+        Args:
+            seller_info: seller 정보
+            (parameter_seller_no: path parameter로 받은 seller의 no)
+            session: db connection 객체
+        Returns:
+            seller_info_result (r'type : dict)
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-09-30 (hj885353@gmail.com) : 초기 생성
+        """
+        # 인자로 받은 seller_info에섯 seller_no를 미리 정의하기 위한 dict
+        # 해당 작업을 수행하지 않을 경우 python dict cannot converted Error 발생
+        seller_no_data = {
+            'seller_no' : seller_info['parameter_seller_no']
+        }
+        # seller_info로 넘어 온 id 값을 가진 seller의 정보를 표출해 주는 쿼리문
+        seller_info_statment = """
+            SELECT
+                image_url,
+                seller_status_id,
+                seller_attribute_id,
+                korean_name,
+                eng_name,
+                seller_loginID,
+                seller_page_background_image_url,
+                simple_description,
+                detail_description,
+                m.name,
+                m.phone_number,
+                m.email,
+                service_center_phone,
+                postal_code,
+                address,
+                service_center_open_time,
+                service_center_close_time,
+                bank,
+                account_holder,
+                account_number,
+                start_at,
+                end_date,
+                modifier_id,
+                shipping_info,
+                refund_policy,
+                model_height,
+                model_top_size,
+                model_pants_size,
+                model_foots_size,
+                update_feed_message
+            FROM seller_info as si
+            INNER JOIN sellers as s ON s.id = si.seller_id
+            INNER JOIN managers as m ON m.id = si.manager_id
+            INNER JOIN seller_status as ss ON ss.id = si.seller_status_id
+            INNER JOIN seller_attributes as sa ON sa.id = si.seller_attribute_id
+            WHERE si.end_date = '9999-12-31 23:59:59'
+            AND s.id = :seller_no
+            AND si.is_deleted = 0
+            AND s.is_deleted = 0
+            AND m.is_deleted = 0
+        """
+        # tuple -> dict로 casting
+        seller_info_result = dict(session.execute(seller_info_statment, seller_no_data).fetchone())
+
+        return seller_info_result
+        

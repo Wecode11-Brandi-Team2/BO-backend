@@ -18,7 +18,6 @@ from utils import login_required
 def create_seller_endpoints(services, Session):
     seller_service = services
     seller_bp = Blueprint('seller', __name__, url_prefix = '/api/seller')
-
     """
     seller 회원가입 endpoint
 
@@ -139,7 +138,7 @@ def create_seller_endpoints(services, Session):
             session.close()
 
     @seller_bp.route('/sellers', methods=['GET'], endpoint='get_seller_list')
-    @login_required
+    @login_required(Session)
     @validate_params(
         Param('mber_no', GET, int, required = False),
         Param('mber_ncnm', GET, str, required = False),
@@ -202,13 +201,13 @@ def create_seller_endpoints(services, Session):
         valid_param['offset']           = args[16] if args[16] else 0
 
         # 유저 정보를 g에서 읽어와서 service 에 전달
-        seller_no = g.seller_no
+        seller_info = g.seller_info
 
         # 데이터베이스 커넥션을 열어줌.
         try:
             session = Session()
             if session:
-                seller_list_result = seller_service.get_seller_list(valid_param, seller_no, session)
+                seller_list_result = seller_service.get_seller_list(valid_param, seller_info, session)
                 # tuple unpacking
                 seller_list, seller_count = seller_list_result
                 return jsonify({'seller_list' : seller_list, 'seller_count' : seller_count})
@@ -217,6 +216,46 @@ def create_seller_endpoints(services, Session):
 
         except Exception as e:
             return jsonify({'message': f'{e}'}), 500
+
+        finally:
+            session.close()
+
+    @seller_bp.route('/<int:parameter_seller_no>', methods=['GET'], endpoint='get_seller_info')
+    @login_required(Session)
+    @validate_params(
+        Param('parameter_seller_no', PATH, int, required = False)
+    )
+    def get_seller_info(*args, **kwargs):
+        """ 계정의 셀러정보 표출
+        path parameter로 seller_no 를 받고 해당 seller
+
+        Args:
+            seller_info: seller 정보
+            session: db connection 객체
+        Returns:
+            seller_info_result (r'type : dict)
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-09-30 (hj885353@gmail.com) : 초기 생성
+        """
+        # 로그인 데코레이터에서 받아 온 정보를 dict 형태로 저장해줌
+        seller_info = {
+            'parameter_seller_no' : args[0],
+            'seller_info' : g.seller_info
+        }
+        session = Session()
+        try:
+            # db connection 정상 연결 시
+            if session:
+                seller_info_result = seller_service.get_seller_info(seller_info, session)
+
+                return seller_info_result
+            # db connection error
+            return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
+
+        except Exception as e:
+            return jsonify({'message' : f'{e}'})
 
         finally:
             session.close()

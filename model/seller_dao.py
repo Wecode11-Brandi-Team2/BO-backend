@@ -74,7 +74,7 @@ class SellerDao:
         seller_info_query += values
         seller_info = session.execute(seller_info_query)
 
-    def get_seller_id_and_password(self, loginID, session):
+    def get_seller_id_and_password(self, seller_info, session):
         """
         로그인 하기 위해 seller의 id와 password를 select 하는 함수
 
@@ -92,16 +92,17 @@ class SellerDao:
             2020-09-25 (hj885353@gmail.com) : 초기 생성
         """
         # request로 들어 온 ID에 해당하는 password를 가지고 와서 fetch. return type : tuple
-        seller = session.execute(("""
+        seller_info_statement = """
             SELECT
-                seller_loginID,
+                sellers.id,
                 password
             FROM
                 seller_info
+            LEFT OUTER JOIN sellers ON sellers.id = seller_info.seller_id
             WHERE
-                seller_loginID = :loginID
-        """),{'loginID' : loginID}).fetchone()
-
+                seller_loginID = :login_id
+        """
+        seller = session.execute(seller_info_statement, seller_info).fetchone()
         # tuple -> dictionary로 casting해서 return
         return dict(seller)
 

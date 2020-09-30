@@ -36,7 +36,7 @@ class SellerService:
         ).decode('UTF-8')
         self.seller_dao.insert_seller(seller_info, session)
 
-    def login(self, credential, session):
+    def login(self, seller_info, session):
         """
         input으로 들어 온 loginID에 해당하는 password와 DB에 저장 된 password를 비교하는 함수
 
@@ -51,14 +51,11 @@ class SellerService:
         History:
             2020-09-25 (hj885353@gmail.com) : 초기 생성
         """
-        loginID = credential['loginID']
-        password = credential['password']
-
-        seller_credential = self.seller_dao.get_seller_id_and_password(loginID, session)
-        authorized = bcrypt.checkpw(password.encode('UTF-8'), seller_credential['password'].encode('UTF-8'))
+        seller_credential = self.seller_dao.get_seller_id_and_password(seller_info, session)
+        authorized = bcrypt.checkpw(seller_info['password'].encode('UTF-8'), seller_credential['password'].encode('UTF-8'))
         return authorized
 
-    def get_seller_id_and_password(self, loginID, session):
+    def get_seller_id_and_password(self, seller_info, session):
         """
         DB에서 dict 형태의 loginID와 hash화 된 password를 controller와 연결시켜주는 함수
 
@@ -75,9 +72,9 @@ class SellerService:
         History:
             2020-09-25 (hj885353@gmail.com) : 초기 생성
         """
-        return self.seller_dao.get_seller_id_and_password(loginID, session)
+        return self.seller_dao.get_seller_id_and_password(seller_info, session)
 
-    def generate_access_token(self, loginID, session):
+    def generate_access_token(self, seller_info, session):
         """
         input으로 들어온 ID와 password가 일치했을 경우 token을 발행해주는 함수
 
@@ -91,10 +88,11 @@ class SellerService:
         History:
             2020-09-25 (hj885353@gmail.com) : 초기 생성
         """
-        access_token = jwt.encode({'loginID' : loginID}, SECRET['SECRET_KEY'], algorithm = SECRET['ALGORITHMS']).decode('UTF-8')
+        seller_info_result = self.seller_dao.get_seller_id_and_password(seller_info, session)
+        access_token = jwt.encode({'seller_no' : seller_info_result['id']}, SECRET['SECRET_KEY'], algorithm = SECRET['ALGORITHMS']).decode('UTF-8')
         return access_token
 
-    def get_seller_list(self, valid_param, loginID, session):
+    def get_seller_list(self, valid_param, seller_no, session):
         """ 가입된 모든 셀러 정보 리스트 표출
         dao에서 받아 온 값을 controller로 return해주는 함수
         Args:

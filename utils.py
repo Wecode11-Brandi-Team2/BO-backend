@@ -16,8 +16,8 @@ def login_required(func):
             if payload is None:
                 return Response(status = 401)  
 
-            loginID   = payload['loginID']
-            g.loginID = loginID
+            seller_no   = payload['seller_info']
+            g.seller_no = seller_no
             
         else:
             return Response(status = 401)  

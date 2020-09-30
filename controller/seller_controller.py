@@ -6,6 +6,8 @@ from flask import (
 )
 from flask_request_validator import (
     GET,
+    PATH,
+    JSON,
     validate_params,
     Param
 )
@@ -85,7 +87,11 @@ def create_seller_endpoints(services, Session):
             session.close()
 
     @seller_bp.route('/login', methods = ['POST'])
-    def login():
+    @validate_params(
+        Param('loginID', JSON, str),
+        Param('password', JSON, str)
+    )
+    def login(*args, **kwargs):
         """
         input으로 들어온 ID와 password가 일치했을 경우 token을 발행해주는 함수
 
@@ -97,16 +103,19 @@ def create_seller_endpoints(services, Session):
         History:
             2020-09-25 (hj885353@gmail.com) : 초기 생성
         """
+        seller_info = {
+            'login_id': args[0],
+            'password': args[1]
+        }
+        session = Session()
+
         try:
-            session = Session()
-            
-            credential = request.json
-            authorized = seller_service.login(credential, session)
+            authorized = seller_service.login(seller_info, session)
 
             # service에서 정상적으로 password 비교가 완료 됐을 경우 if문 동작
             if authorized:
-                seller_credential = seller_service.get_seller_id_and_password(credential['loginID'], session)
-                access_token      = seller_service.generate_access_token(credential['loginID'], session)
+                seller_credential = seller_service.get_seller_id_and_password(seller_info, session)
+                access_token      = seller_service.generate_access_token(seller_info, session)
 
                 # transaction commit
                 session.commit()
@@ -193,13 +202,13 @@ def create_seller_endpoints(services, Session):
         valid_param['offset']           = args[16] if args[16] else 0
 
         # 유저 정보를 g에서 읽어와서 service 에 전달
-        loginID = g.loginID
+        seller_no = g.seller_no
 
         # 데이터베이스 커넥션을 열어줌.
         try:
             session = Session()
             if session:
-                seller_list_result = seller_service.get_seller_list(valid_param, loginID, session)
+                seller_list_result = seller_service.get_seller_list(valid_param, seller_no, session)
                 # tuple unpacking
                 seller_list, seller_count = seller_list_result
                 return jsonify({'seller_list' : seller_list, 'seller_count' : seller_count})

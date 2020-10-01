@@ -227,7 +227,7 @@ def create_seller_endpoints(services, Session):
     )
     def get_seller_info(*args, **kwargs):
         """ 계정의 셀러정보 표출
-        path parameter로 seller_no 를 받고 해당 seller
+        path parameter로 seller_no 를 받고 해당 seller의 정보를 표출해 줌
 
         Args:
             seller_info: seller 정보
@@ -255,6 +255,50 @@ def create_seller_endpoints(services, Session):
             return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
 
         except Exception as e:
+            return jsonify({'message' : f'{e}'})
+
+        finally:
+            session.close()
+
+    @seller_bp.route('/<int:parameter_seller_no>', methods=['PUT'], endpoint='change_seller_info')
+    @login_required(Session)
+    @validate_params(
+        Param('parameter_seller_no', PATH, int, required = False)
+    )
+    def change_seller_info(*args, **kwargs):
+        """
+        path parameter로 seller_id 를 받는다. 
+        client로부터 받는 request를 받는다.
+        로그인 데코레이터에서 g 객체를 사용하여 해당 seller에 대한 info를 받아 해당 데이터를 service에 전달한다.
+
+        Args:
+            validate_params 데코레이터를 통과 한 값을 인자로 받음
+        Returns:
+            INSERT SUCCESS, 200
+            DB_CONNECTION_ERROR, 500
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-01 (hj885353@gmail.com) : 초기 생성
+        """
+        data = request.json
+        change_seller_info = {
+            'parameter_seller_no': args[0],
+            'seller_data'        : data,
+            'seller_info'        : g.seller_info
+        }
+
+        session = Session()
+        try:
+            if session:
+                change_seller_info_result = seller_service.change_seller_info(change_seller_info, session)
+                session.commit()
+                return jsonify({'message' : 'SUCCESS'}), 200
+
+            return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
+
+        except Exception as e:
+            session.rollback()
             return jsonify({'message' : f'{e}'})
 
         finally:

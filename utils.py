@@ -16,19 +16,22 @@ def login_required(Session):
                     if session:
                         get_seller_info_stmt = ("""
                             SELECT 
-                                id,
-                                is_admin,
-                                is_deleted 
+                                s.id,
+                                s.is_admin,
+                                s.is_deleted,
+                                si.manager_id
                             FROM 
-                                sellers
-                            WHERE id = :seller_no
+                                sellers as s
+                            INNER JOIN seller_info as si ON si.seller_id = s.id
+                            WHERE s.id = :seller_no
                         """)
                         seller = dict(session.execute(get_seller_info_stmt, {'seller_no' : seller_no}).fetchone())
                         if seller:
                             if seller['is_deleted'] == 0:
                                 g.seller_info = {
                                     'seller_no': seller_no,
-                                    'is_admin': seller['is_admin']
+                                    'is_admin': seller['is_admin'],
+                                    'manager_id' : seller['manager_id']
                                 }
                                 session.close()
                                 return func(*args, **kwargs)

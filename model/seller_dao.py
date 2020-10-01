@@ -275,14 +275,14 @@ class SellerDao:
             'seller_no' : seller_info['parameter_seller_no']
         }
         # seller_info로 넘어 온 id 값을 가진 seller의 정보를 표출해 주는 쿼리문
-        seller_info_statment = """
+        seller_info_statement = """
             SELECT
                 image_url,
                 seller_status_id,
                 seller_attribute_id,
                 korean_name,
                 eng_name,
-                seller_loginID,
+                s.login_id,
                 seller_page_background_image_url,
                 simple_description,
                 detail_description,
@@ -319,7 +319,148 @@ class SellerDao:
             AND m.is_deleted = 0
         """
         # tuple -> dict로 casting
-        seller_info_result = dict(session.execute(seller_info_statment, seller_no_data).fetchone())
+        seller_info_result = dict(session.execute(seller_info_statement, seller_no_data).fetchone())
 
         return seller_info_result
-        
+
+    def change_seller_info(self, seller_info_data, session):
+        """
+        셀러의 수정 정보를 INSERT 하는 함수입니다.
+        셀러의 정보는 선분이력으로 관리하기 때문에 INSERT INTO 를 사용하였습니다.
+
+        새로운 DB의 정보가 들어오면, 기존의 데이터를 삭제 처리 (soft delete) 및 종료 시간을 업데이트 해 주고,
+        새로 INSERT 된 raw의 시간과 일치하도록 하여 하나의 선분이 되도록 구성하였습니다.
+
+        Args:
+            seller_info_data: endpoint에서 전달받은 seller에 대한 정보
+            session: db connection 객체
+        Returns:
+
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-01 (hj885353@gmail.com) : 초기 생성
+        """
+        # 인자로 받은 seller_info_data의 값을 가지고 와서 db에 넣어주기 위한 작업
+        seller_info = {
+              'image_url'                       : seller_info_data['seller_data']['image_url'],
+              'seller_no'                       : seller_info_data['parameter_seller_no'],
+              'seller_status_id'                : seller_info_data['seller_data']['seller_status_id'],
+              'seller_attribute_id'             : seller_info_data['seller_data']['seller_attribute_id'],
+              'manager_id'                      : seller_info_data['seller_info']['manager_id'],
+              'korean_name'                     : seller_info_data['seller_data']['korean_name'],
+              'eng_name'                        : seller_info_data['seller_data']['eng_name'],
+              'seller_page_background_image_url': seller_info_data['seller_data']['seller_page_background_image_url'],
+              'simple_description'              : seller_info_data['seller_data']['simple_description'],
+              'detail_description'              : seller_info_data['seller_data']['detail_description'],
+              'service_center_phone'            : seller_info_data['seller_data']['service_center_phone'],
+              'postal_code'                     : seller_info_data['seller_data']['postal_code'],
+              'address'                         : seller_info_data['seller_data']['address'],
+              'service_center_open_time'        : seller_info_data['seller_data']['service_center_open_time'],
+              'service_center_close_time'       : seller_info_data['seller_data']['service_center_close_time'],
+              'bank'                            : seller_info_data['seller_data']['bank'],
+              'account_holder'                  : seller_info_data['seller_data']['account_holder'],
+              'account_number'                  : seller_info_data['seller_data']['account_number'],
+              'modifier_id'                     : seller_info_data['seller_data']['modifier_id'],
+              'shipping_info'                   : seller_info_data['seller_data']['shipping_info'],
+              'refund_policy'                   : seller_info_data['seller_data']['refund_policy'],
+              'model_height'                    : seller_info_data['seller_data']['model_height'],
+              'model_top_size'                  : seller_info_data['seller_data']['model_top_size'],
+              'model_pants_size'                : seller_info_data['seller_data']['model_pants_size'],
+              'model_foots_size'                : seller_info_data['seller_data']['model_foots_size'],
+              'update_feed_message'             : seller_info_data['seller_data']['update_feed_message']
+        }
+
+        # 삭제여부, 선분이력 종료시간에 대한 정보를 업데이트 할 쿼리문
+        session.execute(("""
+            UPDATE
+                seller_info
+            SET
+                is_deleted = 1,
+                end_date = now()
+            WHERE seller_id = :seller_no
+            AND is_deleted = 0
+            """), seller_info)
+
+        # arguments로 들어온 새로운 seller 정보 중 seller_info table에 INSERT 할 쿼리문
+        session.execute(("""
+            INSERT INTO seller_info (
+                image_url,
+                seller_id,
+                seller_status_id,
+                seller_attribute_id,
+                manager_id,
+                korean_name,
+                eng_name,
+                seller_page_background_image_url,
+                simple_description,
+                detail_description,
+                service_center_phone,
+                postal_code,
+                address,
+                service_center_open_time,
+                service_center_close_time,
+                bank,
+                account_holder,
+                account_number,
+                modifier_id,
+                shipping_info,
+                refund_policy,
+                model_height,
+                model_top_size,
+                model_pants_size,
+                model_foots_size,
+                update_feed_message,
+                start_at,
+                end_date,
+                is_deleted
+            ) VALUES (
+                :image_url,
+                :seller_no,
+                :seller_status_id,
+                :seller_attribute_id,
+                :manager_id,
+                :korean_name,
+                :eng_name,
+                :seller_page_background_image_url,
+                :simple_description,
+                :detail_description,
+                :service_center_phone,
+                :postal_code,
+                :address,
+                :service_center_open_time,
+                :service_center_close_time,
+                :bank,
+                :account_holder,
+                :account_number,
+                :modifier_id,
+                :shipping_info,
+                :refund_policy,
+                :model_height,
+                :model_top_size,
+                :model_pants_size,
+                :model_foots_size,
+                :update_feed_message,
+                now(),
+                '9999-12-31 23:59:59',
+                0
+            )"""), seller_info)
+
+        # 인자로 받은 seller_info_data의 값을 가지고 와서 db에 넣어주기 위한 작업
+        manager_info = {
+            'manager_name'        : seller_info_data['seller_data']['manager_name'],
+            'manager_phone_number': seller_info_data['seller_data']['manager_phone_number'],
+            'manager_email'       : seller_info_data['seller_data']['manager_email']
+        }
+
+        # arguments로 들어온 새로운 seller 정보 중 managers table에 INSERT 할 쿼리문
+        session.execute(("""
+            INSERT INTO managers (
+                name,
+                phone_number,
+                email
+            ) VALUES (
+                :manager_name,
+                :manager_phone_number,
+                :manager_email
+            )"""), manager_info)

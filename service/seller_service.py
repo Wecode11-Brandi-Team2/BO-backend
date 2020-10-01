@@ -126,3 +126,19 @@ class SellerService:
         seller_info_result = self.seller_dao.get_seller_info(seller_info, session)
 
         return seller_info_result
+
+    def change_seller_info(self, seller_info_data, session):
+        """
+        endpoint로부터 전달 받은 seller에 대한 data를 dao로 전달시키는 함수입니다.
+
+        Args:
+            seller_info_data: endpoint에서 전달받은 seller에 대한 정보
+            session: db connection 객체
+        Returns:
+
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-01 (hj885353@gmail.com) : 초기 생성
+        """
+        change_seller_info_result = self.seller_dao.change_seller_info(seller_info_data, session)

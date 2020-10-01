@@ -7,7 +7,6 @@ def create_user_endpoints(services, Session):
     user_service = services
     user_bp = Blueprint('user', __name__, url_prefix = '/api/user')
 
-    @user_bp.route('/', methods = ['GET'])
     """
     Args:
         services : service.py 연결
@@ -19,6 +18,7 @@ def create_user_endpoints(services, Session):
     History;
         2020-09-21 (hj885353@gmail.com) : 초기 생성
     """
+    @user_bp.route('/', methods = ['GET'])
     def user_info():
         try:
             session = Session()

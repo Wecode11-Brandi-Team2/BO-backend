@@ -142,3 +142,39 @@ class SellerService:
             2020-10-01 (hj885353@gmail.com) : 초기 생성
         """
         change_seller_info_result = self.seller_dao.change_seller_info(seller_info_data, session)
+
+    def check_duplication_kor(self, session):
+        """
+        셀러 정보 수정 관리 중 한글 셀러명을 변경할 때 셀러명에 대한 중복 검사를 실시하는 함수
+        controller와 dao를 연결시켜주는 함수
+
+        Args:
+            session: db connection 객체
+        Returns:
+            check_duplication_result: DB에서 가져온 한글 셀러명 list (r'type : list)
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-02 (hj885353@gmail.com) : 초기 생성
+        """
+        check_duplication_result = self.seller_dao.check_duplication_kor(session)
+
+        return check_duplication_result
+
+    def check_duplication_eng(self, session):
+        """
+        셀러 정보 수정 관리 중 영어 셀러명을 변경할 때 셀러명에 대한 중복 검사를 실시하는 함수
+        controller와 dao를 연결시켜주는 함수
+
+        Args:
+            session: db connection 객체
+        Returns:
+            check_duplication_result: DB에서 가져온 영어 셀러명 list (r'type : list)
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-02 (hj885353@gmail.com) : 초기 생성
+        """
+        check_duplication_result = self.seller_dao.check_duplication_eng(session)
+
+        return check_duplication_result

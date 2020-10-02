@@ -464,3 +464,53 @@ class SellerDao:
                 :manager_phone_number,
                 :manager_email
             )"""), manager_info)
+
+    def check_duplication_kor(self, session):
+        """
+        셀러 정보 수정에서 한글 셀러명에 대한 중복검사를 하기 위해 DB에서 한글 셀러명을 조회하는 함수
+
+        Args:
+            session: db connection 객체
+        Returns:
+            seller_kor_name: DB에서 가져온 한글 셀러명 list (r'type : list)
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-02 (hj885353@gmail.com) : 초기 생성
+        """
+        # DB에 있는 한글 셀러명 중 삭제되지 않은 row에 한해서 한글 셀러명을 모두 가져온다.
+        seller_kor_name_statement = """
+            SELECT
+                korean_name
+            FROM seller_info
+            WHERE is_deleted = 0
+        """
+        seller_kor_name = session.execute(seller_kor_name_statement).fetchall()
+        seller_kor_name = [ dict(kor_name) for kor_name in seller_kor_name ]
+
+        return seller_kor_name
+
+    def check_duplication_eng(self, session):
+        """
+        셀러 정보 수정에서 영어 셀러명에 대한 중복검사를 하기 위해 DB에서 영어 셀러명을 조회하는 함수
+
+        Args:
+            session: db connection 객체
+        Returns:
+            seller_eng_name: DB에서 가져온 영어 셀러명 list (r'type : list)
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-02 (hj885353@gmail.com) : 초기 생성
+        """
+        # DB에 있는 영어 셀러명 중 삭제되지 않은 row에 한해서 영어 셀러명을 모두 가져온다.
+        seller_eng_name_statement = """
+            SELECT
+                eng_name
+            FROM seller_info
+            WHERE is_deleted = 0
+        """
+        seller_eng_name = session.execute(seller_eng_name_statement).fetchall()
+        seller_eng_name = [ dict(eng_name) for eng_name in seller_eng_name ]
+
+        return seller_eng_name

@@ -101,7 +101,7 @@ class SellerDao:
                 seller_info
             LEFT OUTER JOIN sellers ON sellers.id = seller_info.seller_id
             WHERE
-                seller_loginID = :login_id
+                sellers.login_id = :login_id
         """
         seller = session.execute(seller_info_statement, seller_info).fetchone()
         # tuple -> dictionary로 casting해서 return
@@ -514,3 +514,36 @@ class SellerDao:
         seller_eng_name = [ dict(eng_name) for eng_name in seller_eng_name ]
 
         return seller_eng_name
+
+    def get_password(self, change_info, session):
+        seller_no_data = {
+            'seller_no' : change_info['seller_info']['seller_no']
+        }
+        
+        seller_password_statement = """
+            SELECT
+                password
+            FROM seller_info
+            WHERE is_deleted = 0
+            AND seller_id = :seller_no
+        """
+        origin_password = dict(session.execute(seller_password_statement, seller_no_data).fetchone())
+
+        return origin_password
+
+    def change_password(self, change_info, hashed_password, session):
+        change_info_data = {
+            'password' : hashed_password,
+            'seller_no': change_info['seller_info']['seller_no']
+        }
+
+        update_password_statement = """
+            UPDATE
+                seller_info
+            SET 
+                password = :password
+            WHERE seller_id = :seller_no
+            AND is_deleted = 0
+        """
+
+        session.execute(update_password_statement, change_info_data)

@@ -392,4 +392,36 @@ def create_seller_endpoints(services, Session):
         finally:
             session.close()
 
+    @seller_bp.route('/<int:parameter_seller_no>/password', methods=['PUT'], endpoint='change_password')
+    @login_required(Session)
+    @validate_params(
+        Param('parameter_seller_no', PATH, int, required = False),
+        Param('original_password', JSON, str, required = False),
+        Param('new_password', JSON, str, required = False)
+    )
+    def change_password(*args, **kwargs):
+        # 변경할 비밀번호, 비밀번호 재입력
+        change_info = {
+            'parameter_seller_no': args[0],
+            'original_password'  : args[1],
+            'new_password'       : args[2],
+            'seller_info'        : g.seller_info
+        }
+        session = Session()
+
+        try:
+            if session:
+                change_password_result = seller_service.change_password(change_info, session)
+                session.commit()
+                return jsonify({'message' : 'SUCCESS'}), 200
+            
+            return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
+        
+        except Exception as e:
+            session.rollback()
+            return jsonify({'message' : f'{e}'})
+
+        finally:
+            session.close()
+
     return seller_bp

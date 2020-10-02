@@ -8,17 +8,20 @@ from sqlalchemy.orm      import sessionmaker
 from model          import (
     OrderDao,
     UserDao,
-    SellerDao
+    SellerDao,
+    ProductDao
 )
 from service        import (
     OrderService,
     UserService,
-    SellerService
+    SellerService,
+    ProductService
 )
 from controller     import (
     create_order_endpoints,
     create_user_endpoints,
-    create_seller_endpoints
+    create_seller_endpoints,
+    create_product_endpoints
 )
 
 import utils
@@ -44,15 +47,18 @@ def create_app(test_config = None):
     order_dao = OrderDao()
     user_dao = UserDao()
     seller_dao = SellerDao()
+    product_dao = ProductDao()
 
     # Business layer
     order_service = OrderService(order_dao)
     user_service = UserService(user_dao)
     seller_service = SellerService(seller_dao)
+    product_service = ProductService(product_dao)
 
     # Presentation layer
     app.register_blueprint(create_order_endpoints(order_service, Session))
     app.register_blueprint(create_user_endpoints(user_service, Session))
     app.register_blueprint(create_seller_endpoints(seller_service, Session))
+    app.register_blueprint(create_product_endpoints(product_service, Session))
 
     return app

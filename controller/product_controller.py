@@ -1,4 +1,4 @@
-from flask import jsonify, Blueprint
+from flask import jsonify, Blueprint, request
 from flask_request_validator import (
     GET,
     Param,
@@ -7,11 +7,15 @@ from flask_request_validator import (
     validate_params
 )
 
+from utils import login_required
+
+
 def create_product_endpoints(product_service, Session):
 
-    product_app = Blueprint('product_app', __name__, url_prefix='/api/products')
+    product_app = Blueprint('product_app', __name__, url_prefix='/api/product')
 
-    @product_app.route('', methods = ['GET'])
+    @product_app.route('/products', methods = ['GET'])
+    # @login_required(Session)
     @validate_params(
         Param('limit', GET, int, default=10, required=False),
         Param('offset', GET, int, required=False),
@@ -112,11 +116,28 @@ def create_product_endpoints(product_service, Session):
         finally:
             session.close()
 
-    @product_app.route('/product/<int:product_id>', methods=['GET'])
+    @product_app.route('/<int:product_id>', methods=['GET'])
+    # @login_required(Session)
     def product(product_id):
-        try:
-            session = Session()
+        """ 상품 정보 전달 API
 
+        path parameter 로 id 받아 해당 상품의 데이터 표출합니다.
+
+        args:
+            product_id : 상품의 id
+
+        returns :
+            200: 상품 정보
+            500: Exception
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-01 (고지원): 초기 생성
+        """
+        session = Session()
+        try:
             # 상품 데이터
             product = product_service.get_product(product_id, session)
 
@@ -127,6 +148,7 @@ def create_product_endpoints(product_service, Session):
                 'product_name'    : product['name'],
                 'simple_desc'     : product['simple_description'],
                 'images'          : product['images'],
+                'price'           : product['price'],
                 'detail_desc'     : product['detail_description'],
                 'discount_price'  : product['discount_price'],
                 'discount_rate'   : product['discount_rate'],
@@ -141,6 +163,83 @@ def create_product_endpoints(product_service, Session):
 
         except Exception as e:
             return jsonify({'message': f'{e}'}), 500
+
+        finally:
+            session.close()
+
+    @product_app.route('/excel', methods=['GET'])
+    # @login_required(Session)
+    def make_excel():
+        """ 상품 정보 엑셀 다운로드 API
+
+        전체 상품 또는 선택 상품의 정보를 excel 파일로 다운로드 합니다.
+
+        args:
+            product_id : 상품의 id 리스트
+
+        returns :
+            200: Excel 파일 다운
+            500: Exception
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-02 (고지원): 초기 생성
+        """
+        session = Session()
+        try:
+            # 선택한 상품들의 id를 list 로 받는다.
+            id_list = request.args.getlist('product_id')
+
+            # make_excel 함수를 호출한다.
+            product_service.make_excel(id_list, session)
+
+            return jsonify({'message': 'SUCCESS'}), 200
+
+        except Exception as e:
+            return jsonify({'message': f'{e}'}), 500
+
+        finally:
+            session.close()
+
+    @product_app.route('', methods=['POST', 'UPDATE'])
+    # @login_required(Session)
+    def insert_product():
+        session = Session()
+        try:
+            if request.method == 'POST':
+
+                # 상품 입력을 위한 데이터를 받는다.
+                product_info = {
+                    'seller_id'          : request.json['seller_id'],
+                    'is_on_sale'         : request.json['is_on_sale'],
+                    'is_displayed'       : request.json['is_displayed'],
+                    'name'               : request.json['name'],
+                    'simple_description' : request.json['simple_description'],
+                    'detail_description' : request.json['detail_description'],
+                    'price'              : request.json['price'],
+                    'discount_rate'      : request.json['discount_rate'],
+                    'discount_price'     : request.json['discount_price'],
+                    'min_unit'           : request.json['min_unit'],
+                    'max_unit'           : request.json['max_unit'],
+                    'is_stock_managed'   : request.json['is_stock_managed'],
+                    'stock_number'       : request.json['stock_number'],
+                    'first_category_id'  : request.json['first_category_id'],
+                    'second_category_id' : request.json['second_category_id'],
+                    'modifier_id'        : request.json['modifier_id'],
+                    'images'             : request.json['images']
+                }
+
+                product_service.insert_product(product_info, session)
+
+        except KeyError:
+            return jsonify({'message' : 'KEY_ERROR'}), 400
+
+        # except Exception as e:
+        #     session.rollback()
+
+            # return jsonify({'message': f'{e}'}), 500
 
         finally:
             session.close()

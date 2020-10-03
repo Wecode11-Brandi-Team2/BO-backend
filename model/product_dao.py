@@ -1,4 +1,62 @@
 class ProductDao:
+    def get_first_category(self, seller_info, session):
+        """ 첫 번째 카테고리 데이터 전달
+
+        args:
+            seller_info: seller 가 가지는 속성 id
+            session: 데이터베이스 session 객체
+
+        returns :
+            200: 첫 번째 메뉴 리스트
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-03 (고지원): 초기 생성
+        """
+        filter_query = """
+            SELECT 
+                f_cat.id AS f_id,
+                f_cat.first_category_name
+            FROM main_categories AS m_cat 
+            INNER JOIN first_categories AS f_cat ON m_cat.id = f_cat.main_category_id
+            INNER JOIN seller_attributes AS s_attr ON s_attr.attribute_group_id = :attribute_id               
+            WHERE s_attr.attribute_group_id = m_cat.id;
+            """
+
+        row = session.execute(filter_query, {'attribute_id' : seller_info})
+
+        return row
+
+    def get_second_category(self, first_category_id, session):
+        """ 두 번째 카테고리 데이터 전달
+
+        args:
+            first_category_id: 첫 번째 카테고리의 id
+            session: 데이터베이스 session 객체
+
+        returns :
+            200: 두 번째 메뉴 리스트
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-03 (고지원): 초기 생성
+        """
+        filter_query = """
+            SELECT 
+                s_cat.id AS s_id,
+                s_cat.first_category_name
+            FROM first_categories AS f_cat 
+            INNER JOIN second_categories AS s_cat ON s_cat.first_category_id = :f_cat_id           
+            """
+
+        row = session.execute(filter_query, {'f_cat_id' : first_category_id})
+
+        return row
+
     def get_products(self, product_info, session):
         """ 상품 리스트 표출
 
@@ -102,6 +160,13 @@ class ProductDao:
 
             filter_query += " AND s_info.korean_name LIKE :name"
 
+        # 엑셀 다운을 위한 상품 id list
+        if product_info.get('product_id', None):
+            for idx, id in enumerate(product_info.get('product_id', None)):
+                if idx == 0:
+                    filter_query += " AND p.id = " + id
+                filter_query += " OR p.id = " + id
+
         # pagination
         if product_info.get('limit', None):
             filter_query += " LIMIT :limit"
@@ -133,7 +198,6 @@ class ProductDao:
         product_info = session.execute(("""
             SELECT 
                 p.id AS p_id, 
-                p_info.id AS p_info_id,
                 p_info.product_code AS p_code,
                 p_info.price, 
                 p_info.is_on_sale,
@@ -143,12 +207,9 @@ class ProductDao:
                 p_info.detail_description,
                 p_info.discount_rate, 
                 p_info.discount_price,
-                p_info.discount_start_date,
-                p_info.discount_end_date,
                 p_info.is_definite,
                 p_info.min_unit,
                 p_info.max_unit,
-                p_info.sales_amount, 
                 p_info.seller_id,
                 f_cat.first_category_name,
                 s_cat.second_category_name
@@ -186,3 +247,111 @@ class ProductDao:
         product_info['images'] = image_list
 
         return product_info
+
+    def insert_product(self, product_info, session):
+        """ 상품 데이터 등록
+
+        args:
+            product_info: 상품의 정보
+            session: 데이터베이스 session 객체
+
+        returns :
+            200: 상품 데이터 등록
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-02 (고지원): 초기 생성
+        """
+
+        # 1. products 테이블에 데이터 insert
+        insert_query = """
+        INSERT INTO products
+        (
+            created_at,
+            is_deleted
+        ) VALUES (
+            now(),
+            0
+        )
+        """
+        row = session.execute(insert_query).lastrowid
+
+        # 2. product_info 테이블에 데이터 insert
+        product_info['product_id'] = row
+
+        insert_query = """
+        INSERT INTO product_info
+        (   
+            product_id,
+            seller_id,
+            is_on_sale,
+            is_displayed,
+            name,
+            simple_description,
+            detail_description,
+            price,
+            discount_rate,
+            discount_price,
+            min_unit,
+            max_unit,
+            is_stock_managed,
+            stock_number,
+            first_category_id,
+            second_category_id,
+            modifier_id,
+            created_at,
+            is_deleted
+        ) VALUES (
+            :product_id,
+            :seller_id,
+            :is_on_sale,
+            :is_displayed,
+            :name,
+            :simple_description,
+            :detail_description,
+            :price,
+            :discount_rate,
+            :discount_price,
+            :min_unit,
+            :max_unit,
+            :is_stock_managed,
+            :stock_number,
+            :first_category_id,
+            :second_category_id,
+            :modifier_id,
+            now(),
+            0
+        )
+        """
+
+        row = session.execute(insert_query, product_info).lastrowid
+
+        # image 테이블 Insert
+        image_list = product_info['images']
+
+        for idx, image in enumerate(image_list):
+            image_info = {
+                'image_url' : image,
+                'product_info_id' : row,
+                'ordering' : idx
+            }
+
+            insert_query = """
+            INSERT INTO product_images
+            (   
+                URL,
+                product_info_id,
+                ordering,
+                created_at
+            ) VALUES (
+                :image_url,
+                :product_info_id,
+                :ordering,
+                now()
+            )
+            """
+
+        session.execute(insert_query, image_info)
+

@@ -28,17 +28,15 @@ class OrderService:
         """
         # return self.order_dao.select_orders(select_condition, session)
         order_list = self.order_dao.select_orders(select_condition, session)
-        print(order_list)
+        
         result_order_list = []
 
+        # option_size와 option_olor 값을 합친 option_info 정보 추가
         for order in order_list:
-            print(order)
             dict_order = dict(order)
-            print(dict_order)
             dict_order['option_info'] = f"{dict_order['option_color']} / {dict_order['option_size']}"
             result_order_list.append(dict_order)
 
-        print(result_order_list)
         return result_order_list
 
     def get_order_detail_info(self, order_item_id, session):

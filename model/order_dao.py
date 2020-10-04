@@ -44,7 +44,7 @@ class OrderDao:
                         oi_info.discount_price,
                         oi_info.refund_reason_id,
                         oi_info.cancel_reason_id,
-                        oi_info.refund_amount,
+                        oi_info.refund_amount
 
                     FROM orders
 

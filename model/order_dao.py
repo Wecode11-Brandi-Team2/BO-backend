@@ -1,5 +1,3 @@
-from flask import jsonify
-
 class OrderDao:
 
     def select_orders(self, select_condition, session):
@@ -26,48 +24,41 @@ class OrderDao:
         # 검색 필터 조건 적용 전 쿼리문
         query = """ SELECT 
                         orders.payment_date,
-                        recent_order_item_info.shipping_start_date,
-                        recent_order_item_info.shipping_complete_date,
-                        recent_order_item_info.refund_request_date,
-                        recent_order_item_info.refund_complete_date,
-                        recent_order_item_info.complete_cancellation_date,
-                        orders.id AS order_id,,
-                        recent_order_item_info.order_detail_id,
-                        recent_order_item_info.id AS order_item_id,
-                        recent_seller_info.korean_name,
-                        recent_product_info.name,
-                        recent_order_item_info.option_color,
-                        recent_order_item_info.option_size,
-                        recent_order_item_info.option_additional_price,
-                        recent_order_item_info.units,
+                        oi_info.shipping_start_date,
+                        oi_info.shipping_complete_date,
+                        oi_info.refund_request_date,
+                        oi_info.refund_complete_date,
+                        oi_info.complete_cancellation_date,
+                        orders.id AS order_id,
+                        oi_info.order_detail_id,
+                        oi_info.id AS order_item_id,
+                        s_info.korean_name AS seller_name,
+                        p_info.name AS product_name,
+                        oi_info.option_color,
+                        oi_info.option_size,
+                        oi_info.option_additional_price,
+                        oi_info.units,
                         orders.orderer_name,
                         orders.orderer_phone,
-                        recent_order_item_info.shipping_number,
-                        recent_order_item_info.shipping_company,
                         orders.total_payment,
-                        recent_order_item_info.discount_price,
-                        recent_order_item_info.refund_reason_id,
-                        recent_order_item_info.cancel_reason_id,
-                        recent_order_item_info.refund_amount,
-                        order_status.status_name
+                        oi_info.discount_price,
+                        oi_info.refund_reason_id,
+                        oi_info.cancel_reason_id,
+                        oi_info.refund_amount,
 
                     FROM orders
 
-                    JOIN order_item_info AS recent_order_item_info
-                    ON recent_order_item_info.order_id = orders.id
-                    AND recent_order_item_info.end_date = '9999-12-31 23:59:59'   
+                    INNER JOIN order_item_info AS oi_info
+                    ON oi_info.order_id = orders.id
+                    AND oi_info.end_date = '9999-12-31 23:59:59'   
 
-                    JOIN order_status
-                    ON order_status.id = recent_order_item_info.order_status_id
-
-                    JOIN product_info AS recent_product_info 
-                    ON recent_product_info.product_id = recent_order_item_info.product_id
-                    AND recent_product_info.is_deleted = 0 
+                    INNER JOIN product_info AS p_info 
+                    ON p_info.product_id = oi_info.product_id
+                    AND p_info.is_deleted = 0 
                     
-                    JOIN seller_info AS recent_seller_info 
-                    ON recent_seller_info.seller_id = recent_product_info.seller_id   
-                    AND recent_seller_info.end_date = '9999-12-31 23:59:59'
-                                            
+                    INNER JOIN seller_info AS s_info 
+                    ON s_info.seller_id = p_info.seller_id   
+                    AND s_info.end_date = '9999-12-31 23:59:59'
                 """
  
         # 검색 조건 검사
@@ -75,16 +66,16 @@ class OrderDao:
 
         # 주문 상태 조건
         # 1 : 결제완료, 2 : 상품준비중, 3 : 배송중, 4 : 배송완료, 5 : 환불요청, 6 : 환불완료, 7 : 주문취소완료
-        condition_statement += f"WHERE recent_order_item_info.order_status_id = {select_condition['orderStatus']}"
+        condition_statement += f"WHERE oi_info.order_status_id = {select_condition['orderStatus']}"
 
         # 검색조건
         if select_condition.get('selectFilter', None):
             # 주문번호
             if select_condition['selectFilter'] == 'C_ORDER_CD':
-                condition_statement += f" AND recent_order_item_info.order_id LIKE '%{select_condition['filterKeyword']}%'"
+                condition_statement += f" AND oi_info.order_id LIKE '%{select_condition['filterKeyword']}%'"
             # 주문상세번호
             elif select_condition['selectFilter'] == 'C_ORDER_DETAIL_CD':
-                condition_statement += f" AND recent_order_item_info.order_detail_id LIKE '%{select_condition['filterKeyword']}%'"
+                condition_statement += f" AND oi_info.order_detail_id LIKE '%{select_condition['filterKeyword']}%'"
             # 주문자명
             elif select_condition['selectFilter'] == 'C_ORDER_NAME':
                 condition_statement += f" AND orders.orderer_name LIKE '%{select_condition['filterKeyword']}%'"
@@ -93,22 +84,22 @@ class OrderDao:
                 condition_statement += f" AND orders.orderer_phone LIKE '%{select_condition['filterKeyword']}%'"
             # 셀러명
             elif select_condition['selectFilter'] == 'C_MD_KO_NAME':
-                condition_statement += f" AND recent_seller_info.korean_name LIKE '%{select_condition['filterKeyword']}%'"
+                condition_statement += f" AND s_info.korean_name LIKE '%{select_condition['filterKeyword']}%'"
             # 상품명
             elif select_condition['selectFilter'] == 'C_PRODUCT_NAME':
-                condition_statement += f" AND recent_product_info.name LIKE '%{select_condition['filterKeyword']}%'"
+                condition_statement += f" AND p_info.name LIKE '%{select_condition['filterKeyword']}%'"
 
         # 운송장번호 검색
         if select_condition.get('filterDeliveryNumber', None):
-            condition_statement += f" AND shipping_orders.shipping_number LIKE '%{select_condition['filterDeliveryNumber']}%'"
+            condition_statement += f" oi_info.shipping_number LIKE '%{select_condition['filterDeliveryNumber']}%'"
 
         # 환불사유
         if select_condition.get('filterRefndReason', None):
-            condition_statement += f" AND refund_cancel_orders.refund_reason_id = {select_condition['filterRefndReason']}"
+            condition_statement += f" AND oi_info.refund_reason_id = {select_condition['filterRefndReason']}"
 
         # 주문취소사유
         if select_condition.get('filterCancelReason', None):
-            condition_statement += f" AND refund_cancel_orders.cancel_reason_id = {select_condition['filterCancelReason']}"
+            condition_statement += f" AND oi_info.cancel_reason_id = {select_condition['filterCancelReason']}"
 
         # 주문완료일 조건 : 시작구간
         if select_condition.get('filterDateFrom', None):
@@ -121,10 +112,10 @@ class OrderDao:
         # 셀러속성 필터조건
         if select_condition.get('mdSeNo', None):
             if len(select_condition['mdSeNo']) == 1:
-                condition_statement += f" AND recent_seller_info.seller_attribute_id = {select_condition['mdSeNo']}"
+                condition_statement += f" AND s_info.seller_attribute_id = {select_condition['mdSeNo']}"
             else:
                 tupled_mdSeNo = tuple(select_condition['mdSeNo'])
-                condition_statement += f" AND recent_seller_info.seller_attribute_id IN {tupled_mdSeNo}"
+                condition_statement += f" AND s_info.seller_attribute_id IN {tupled_mdSeNo}"
 
         # 정렬기준
         # 결제일 최신일순
@@ -135,34 +126,34 @@ class OrderDao:
             condition_statement += " ORDER BY orders.payment_date ASC"
         # 배송시작 최신일순
         elif select_condition['filterOrder'] == 'NEW_DELIVERY':
-            condition_statement += " ORDER BY shipping_orders.shipping_start_date DESC"
+            condition_statement += " ORDER BY oi_info.shipping_start_date DESC"
         # 배송시작 역순
         elif select_condition['filterOrder'] == 'OLD_DELIVERY':
-            condition_statement += " ORDER BY shipping_orders.shipping_start_date ASC"
+            condition_statement += " ORDER BY oi_info.shipping_start_date ASC"
         # 배송완료 최신일순
         elif select_condition['filterOrder'] == 'NEW_DELIVERY_COMPLETE':
-            condition_statement += " ORDER BY shipping_orders.shipping_complete_date DESC"
+            condition_statement += " ORDER BY oi_info.shipping_complete_date DESC"
         # 배송완료 역순
         elif select_condition['filterOrder'] == 'OLD_DELIVERY_COMPLETE':
-            condition_statement += " ORDER BY shipping_orders.shipping_complete_date ASC"
+            condition_statement += " ORDER BY oi_info.shipping_complete_date ASC"
         # 최신환불요청일순
         elif select_condition['filterOrder'] == 'NEW_REQUEST_REFUND':
-            condition_statement += " ORDER BY refund_cancel_orders.refund_request_date DESC"
+            condition_statement += " ORDER BY oi_info.refund_request_date DESC"
         # 환불요청일의 역순
         elif select_condition['filterOrder'] == 'OLD_REQUEST_REFUND':
-            condition_statement += " ORDER BY refund_cancel_orders.refund_request_date ASC"
+            condition_statement += " ORDER BY oi_info.refund_request_date ASC"
         # 최신환불완료일순
         elif select_condition['filterOrder'] == 'NEW_REFUND_COMPLETE':
-            condition_statement += " ORDER BY refund_cancel_orders.refund_complete_date DESC"
+            condition_statement += " ORDER BY oi_info.refund_complete_date DESC"
         # 환불완료일의 역순
         elif select_condition['filterOrder'] == 'OLD_REFUND_COMPLETE':
-            condition_statement += " ORDER BY refund_cancel_orders.refund_complete_date ASC"
+            condition_statement += " ORDER BY oi_info.refund_complete_date ASC"
         # 최신 주문취소완료일순
         elif select_condition['filterOrder'] == 'NEW_CANCEL_COMPLETE':
-            condition_statement += " ORDER BY refund_cancel_orders.complete_cancellation_date DESC"
+            condition_statement += " ORDER BY oi_info.complete_cancellation_date DESC"
         # 주문취소완료일의 역순
         elif select_condition['filterOrder'] == 'OLD_CANCEL_COMPLETE':
-            condition_statement += " ORDER BY refund_cancel_orders.complete_cancellation_date ASC"
+            condition_statement += " ORDER BY oi_info.complete_cancellation_date ASC"
 
         # 페이지네이션
         if select_condition.get('filterLimit', None):
@@ -202,51 +193,54 @@ class OrderDao:
         # 검색 필터 조건 적용 전 쿼리문
         query = """ SELECT 
                         orders.payment_date,
-                        recent_order_item_info.shipping_start_date,
-                        recent_order_item_info.shipping_complete_date,
-                        recent_order_item_info.refund_request_date,
-                        recent_order_item_info.refund_complete_date,
-                        recent_order_item_info.complete_cancellation_date,
+                        oi_info.shipping_start_date,
+                        oi_info.shipping_complete_date,
+                        oi_info.refund_request_date,
+                        oi_info.refund_complete_date,
+                        oi_info.complete_cancellation_date,
                         orders.id AS order_id,
-                        recent_order_item_info.id AS order_item_id,
-                        recent_order_item_info.order_detail_id,
-                        recent_seller_info.korean_name,
-                        recent_product_info.name,
-                        recent_order_item_info.option_color,
-                        recent_order_item_info.option_size,
-                        recent_order_item_info.option_additional_price,
-                        recent_order_item_info.units,
+                        oi_info.id AS order_item_id,
+                        oi_info.order_detail_id,
+                        s_info.korean_name AS seller_name,
+                        p_info.name AS product_name,
+                        oi_info.option_color,
+                        oi_info.option_size,
+                        oi_info.option_additional_price,
+                        oi_info.units,
                         orders.user_id,
                         orders.orderer_name,
                         orders.orderer_phone,
-                        recent_order_item_info.shipping_number,
-                        recent_order_item_info.shipping_company,
+                        oi_info.shipping_number,
+                        oi_info.shipping_company,
                         orders.receiver_name,
                         orders.receiver_phone,
                         orders.receiver_address,
                         orders.shipping_memo,
                         orders.total_payment,
-                        recent_order_item_info.discount_price,
-                        recent_order_item_info.refund_reason_id,
-                        recent_order_item_info.cancel_reason_id,
-                        recent_order_item_info.refund_amount,
-                        order_status.status_name
+                        oi_info.discount_price,
+                        oi_info.refund_reason_id,
+                        oi_info.cancel_reason_id,
+                        oi_info.refund_amount,
+                        order_status.status_name AS order_status_name
 
                     FROM orders
 
-                    JOIN order_item_info AS recent_order_item_info
-                    ON recent_order_item_info.order_id = orders.id
-                    AND recent_order_item_info.end_date = '9999-12-31 23:59:59'   
+                    INNER JOIN order_item_info AS oi_info
+                    ON oi_info.order_id = orders.id
+                    AND oi_info.end_date = '9999-12-31 23:59:59'   
 
-                    JOIN product_info AS recent_product_info 
-                    ON recent_product_info.product_id = recent_order_item_info.product_id
-                    AND recent_product_info.is_deleted = 0 
+                    INNER JOIN product_info AS p_info 
+                    ON p_info.product_id = oi_info.product_id
+                    AND p_info.is_deleted = 0 
                     
-                    JOIN seller_info AS recent_seller_info 
-                    ON recent_seller_info.seller_id = recent_product_info.seller_id   
-                    AND recent_seller_info.end_date = '9999-12-31 23:59:59'
+                    INNER JOIN seller_info AS s_info 
+                    ON s_info.seller_id = p_info.seller_id   
+                    AND s_info.end_date = '9999-12-31 23:59:59'
 
-                    WHERE recent_order_item_info.id = :order_item_id                    
+                    INNER JOIN order_status
+                    ON order_status.id = oi_info.order_status_id
+
+                    WHERE oi_info.id = :order_item_id                    
             """
         
         # query 실행
@@ -277,7 +271,7 @@ class OrderDao:
                         order_status.status_name AS order_status,
                         order_item_info.start_date AS update_date
                     FROM order_item_info
-                    JOIN order_status
+                    INNER JOIN order_status
                     ON order_item_info.order_status_id = order_status.id
                     WHERE order_item_info.order_id = :order_id
                 """
@@ -376,3 +370,413 @@ class OrderDao:
             'shipping_company'   : changement['shippingCompany'],
             'shipping_number'    : changement['shippingNumber'],
             'order_item_info_id' : changement['orderItemId']})
+
+    def end_record(self, cancel_order, updated_at, session):
+
+        """
+        주문 선분이력 종료 처리 로직
+            주어진 주문상세번호에 해당하는 최신상태 주문의 선분이력을 종료처리하는 엔드포인트 입니다.
+            
+        args :
+            cancel_order : 취소할 주문의 주문상세번호 및 취소내용이 담긴 딕셔너리
+            updated_at   : 로직이 실행되는 시간
+
+        Authors:
+            eymin1259@gmail.com 이용민
+
+        History:
+            2020-09-29 (이용민) : 초기 생성
+        """
+
+        query = """ UPDATE 
+                        order_item_info 
+                    SET 
+                        end_date = :updated_at, 
+                        is_deletd = 1
+                    WHERE 
+                        order_item_info.order_detail_id = :order_item_id
+                        AND is_delete = 0
+                """
+        session.execute(query, {
+            'updated_at'    : updated_at,
+            'order_item_id' : cancel_order['order_item_id']})
+
+    def insert_new_status_order_item(self, next_status_order, updated_at, session):
+
+        """
+        주문상태변경 선분이력 생성 로직
+            해당 주문상세번호에 전달받은 주문상태로 새로운 row를 생성합니다.        
+            
+        args :
+            next_status_order : 변경할 주문의 주문상세번호 및 변경내용이 담긴 딕셔너리
+            updated_at        : 이력 수정시간
+
+        Authors:
+            eymin1259@gmail.com 이용민
+
+        History:
+            2020-10-02 (이용민) : 초기 생성
+        """
+
+        query = """ INSERT INTO 
+                        order_item_info 
+                            (
+                                order_detail_id,
+                                order_id,
+                                order_status_id,
+                                product_id,
+                                price,
+                                option_color,
+                                option_size,
+                                option_additional_price,
+                                units,
+                                discount_price,
+                                shipping_start_date,
+                                shipping_complete_date,
+                                shipping_company,
+                                shipping_number,
+                                is_confirm_order,
+                                refund_request_date,
+                                refund_complete_date,
+                                refund_reason_id,
+                                refund_amount,
+                                refund_shipping_fee,
+                                detail_reason,
+                                bank,
+                                account_holder,
+                                account_number,
+                                cancel_reason_id,
+                                complete_cancellation_date,
+                                start_date,
+                                end_date,
+                                modifier_id
+                            )
+                    SELECT 
+                        order_detail_id,
+                        order_id,
+                        :order_status_id,
+                        product_id,
+                        price,
+                        option_color,
+                        option_size,
+                        option_additional_price,
+                        units,
+                        discount_price,
+                        shipping_start_date,
+                        shipping_complete_date,
+                        shipping_company,
+                        shipping_number,
+                        is_confirm_order,
+                        refund_request_date,
+                        refund_complete_date,
+                        refund_reason_id,
+                        refund_amount,
+                        refund_shipping_fee,
+                        detail_reason,
+                        bank,
+                        account_holder,
+                        account_number,
+                        cancel_reason_id,
+                        complete_cancellation_date,
+                        :updated_at,
+                        '9999-12-31 23:59:59',
+                        modifier_id
+                    FROM
+                        order_item_info
+                    WHERE
+                        order_item_info.order_detail_id = :order_item_id
+                        AND end_date = :updated_at
+                        AND is_deletd = 1
+                """
+                                
+        session.execute(query, {
+            'updated_at'      : updated_at,
+            'order_status_id' : next_status_order['next_order_status_id'],
+            'order_item_id'   : next_status_order['order_item_id']
+            })
+
+    def insert_cancel_order_item(self, cancel_order, updated_at, session):
+        
+        """
+        주문취소완료처리 선분이력 생성 로직
+            주어진 주문상세번호에 주문에 주문상태가 주문취소완료인 새로운 row를 생성합니다.        
+            
+        args :
+            cancel_order : 취소할 주문의 주문상세번호 및 취소내용이 담긴 딕셔너리
+            updated_at   : 로직이 실행되는 시간
+
+        Authors:
+            eymin1259@gmail.com 이용민
+
+        History:
+            2020-09-29 (이용민) : 초기 생성
+        """
+
+        # 이전 상태를 복사하여 새로운 주문취소완료상태 주문 생성
+        query = """ INSERT INTO 
+                        order_item_info 
+                            (
+                                order_detail_id,
+                                order_id,
+                                order_status_id,
+                                product_id,
+                                price,
+                                option_color,
+                                option_size,
+                                option_additional_price,
+                                units,
+                                discount_price,
+                                shipping_start_date,
+                                shipping_complete_date,
+                                shipping_company,
+                                shipping_number,
+                                is_confirm_order,
+                                refund_request_date,
+                                refund_complete_date,
+                                refund_reason_id,
+                                refund_amount,
+                                refund_shipping_fee,
+                                detail_reason,
+                                bank,
+                                account_holder,
+                                account_number,
+                                cancel_reason_id,
+                                complete_cancellation_date,
+                                start_date,
+                                end_date,
+                                modifier_id
+                            )
+                    SELECT 
+                        order_detail_id,
+                        order_id,
+                        :order_status_id,
+                        product_id,
+                        price,
+                        option_color,
+                        option_size,
+                        option_additional_price,
+                        units,
+                        discount_price,
+                        shipping_start_date,
+                        shipping_complete_date,
+                        shipping_company,
+                        shipping_number,
+                        is_confirm_order,
+                        refund_request_date,
+                        refund_complete_date,
+                        refund_reason_id,
+                        refund_amount,
+                        refund_shipping_fee,
+                        detail_reason,
+                        bank,
+                        account_holder,
+                        account_number,
+                        :cancel_reason_id,
+                        :updated_at,
+                        :updated_at,
+                        '9999-12-31 23:59:59',
+                        modifier_id
+                    FROM
+                        order_item_info
+                    WHERE
+                        order_item_info.order_detail_id = :order_item_id
+                        AND end_date = :updated_at
+                        AND is_deletd = 1
+                """ 
+        session.execute(query, {
+            'updated_at'    : updated_at,
+            'order_item_id' : cancel_order['order_item_id'],
+            'order_status_id' : cancel_order['order_status_id'],
+            'cancel_reason_id' : cancel_order['cancel_reason_id']
+            })
+
+    def insert_refund_request_order_item(self, refund_request, updated_at, session):
+        
+        """
+        환불요청 선분이력 생성 로직
+            해당 주문상세번호의 주문에 환불요청상태로 새로운 row를 생성합니다.        
+            
+        args :
+            refund_request : 환불요청할 주문의 주문상세번호 및 환불요청 내용이 담긴 딕셔너리
+            updated_at     : 이력 수정시간
+
+        Authors:
+            eymin1259@gmail.com 이용민
+
+        History:
+            2020-10-02 (이용민) : 초기 생성
+        """
+
+        # 이전 상태를 복사하여 새로운 주문환불요청상태 주문 생성
+        query = """ INSERT INTO 
+                        order_item_info 
+                            (
+                                order_detail_id,
+                                order_id,
+                                order_status_id,
+                                product_id,
+                                price,
+                                option_color,
+                                option_size,
+                                option_additional_price,
+                                units,
+                                discount_price,
+                                shipping_start_date,
+                                shipping_complete_date,
+                                shipping_company,
+                                shipping_number,
+                                is_confirm_order,
+                                refund_request_date,
+                                refund_complete_date,
+                                refund_reason_id,
+                                refund_amount,
+                                refund_shipping_fee,
+                                detail_reason,
+                                bank,
+                                account_holder,
+                                account_number,
+                                cancel_reason_id,
+                                complete_cancellation_date,
+                                start_date,
+                                end_date,
+                                modifier_id
+                            )
+                    SELECT 
+                        order_detail_id,
+                        order_id,
+                        :order_status_id,
+                        product_id,
+                        price,
+                        option_color,
+                        option_size,
+                        option_additional_price,
+                        units,
+                        discount_price,
+                        shipping_start_date,
+                        shipping_complete_date,
+                        shipping_company,
+                        shipping_number,
+                        is_confirm_order,
+                        :updated_at,
+                        refund_complete_date,
+                        :refund_reason_id,
+                        :refund_amount,
+                        refund_shipping_fee,
+                        :refund_detail_reason,
+                        bank,
+                        account_holder,
+                        account_number,
+                        cancel_reason_id,
+                        complete_cancellation_date,
+                        :updated_at,
+                        '9999-12-31 23:59:59',
+                        modifier_id
+                    FROM
+                        order_item_info
+                    WHERE
+                        order_item_info.order_detail_id = :order_item_id
+                        AND end_date = :updated_at
+                        AND is_deletd = 1
+                """ 
+        session.execute(query, {
+            'updated_at'           : updated_at,
+            'order_item_id'        : refund_request['order_item_id'],
+            'order_status_id'      : refund_request['order_status_id'],
+            'refund_reason_id'     : refund_request['refund_reason_id'],
+            'refund_amount'        : refund_request['refund_amount'],
+            'refund_detail_reason' : refund_request['refund_detail_reason']
+            })
+        
+    def insert_refund_complete_order_item(self, refund_complete, updated_at, session):
+
+        """
+        환불완료 선분이력 생성 로직
+            해당 주문상세번호의 주문에 환불완료 상태로 새로운 row를 생성합니다.        
+            
+        args :
+            refund_complete : 환불완료할 주문의 주문상세번호 및 환불완료 내용이 담긴 딕셔너리
+            updated_at      : 이력 수정시간
+
+        Authors:
+            eymin1259@gmail.com 이용민
+
+        History:
+            2020-10-02 (이용민) : 초기 생성
+        """
+
+        query = """ INSERT INTO 
+                        order_item_info 
+                            (
+                                order_detail_id,
+                                order_id,
+                                order_status_id,
+                                product_id,
+                                price,
+                                option_color,
+                                option_size,
+                                option_additional_price,
+                                units,
+                                discount_price,
+                                shipping_start_date,
+                                shipping_complete_date,
+                                shipping_company,
+                                shipping_number,
+                                is_confirm_order,
+                                refund_request_date,
+                                refund_complete_date,
+                                refund_reason_id,
+                                refund_amount,
+                                refund_shipping_fee,
+                                detail_reason,
+                                bank,
+                                account_holder,
+                                account_number,
+                                cancel_reason_id,
+                                complete_cancellation_date,
+                                start_date,
+                                end_date,
+                                modifier_id
+                            )
+                    SELECT 
+                        order_detail_id,
+                        order_id,
+                        :order_status_id,
+                        product_id,
+                        price,
+                        option_color,
+                        option_size,
+                        option_additional_price,
+                        units,
+                        discount_price,
+                        shipping_start_date,
+                        shipping_complete_date,
+                        shipping_company,
+                        shipping_number,
+                        is_confirm_order,
+                        refund_request_date,
+                        :updated_at,
+                        refund_reason_id,
+                        refund_amount,
+                        refund_shipping_fee,
+                        detail_reason,
+                        bank,
+                        account_holder,
+                        account_number,
+                        cancel_reason_id,
+                        complete_cancellation_date,
+                        :updated_at,
+                        '9999-12-31 23:59:59',
+                        modifier_id
+                    FROM
+                        order_item_info
+                    WHERE
+                        order_item_info.order_detail_id = :order_item_id
+                        AND end_date = :updated_at
+                        AND is_deletd = 1
+                """ 
+        session.execute(query, {
+            'updated_at'    : updated_at,
+            'order_item_id' : refund_complete['order_item_id'],
+            'order_status_id' : refund_complete['order_status_id']
+            })
+        

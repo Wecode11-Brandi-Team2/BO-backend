@@ -58,7 +58,7 @@ def create_order_endpoints(order_service, Session):
 
         # 세션 인스턴스 생성 : connection open, transaction begin
         session = Session()
-
+        
         try:
             select_condition = {
                 'orderStatus'           : args[0], # 주문상태
@@ -92,9 +92,9 @@ def create_order_endpoints(order_service, Session):
             # session close, transaction 종료
             session.close()
 
-    @order_app.route('/detail/<int:order_item_id>', methods=['GET'], endpoint='get_order_detail_info')
+    @order_app.route('/detail/<string:order_item_id>', methods=['GET'], endpoint='get_order_detail_info')
     @validate_params(
-        Param('order_item_id', PATH, int, required=True),   # 주문상세번호
+        Param('order_item_id', PATH, str, required=True),   # 주문상세번호
     )
 
     def get_order_detail_info(*args, **kwargs):

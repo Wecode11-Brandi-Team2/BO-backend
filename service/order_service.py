@@ -31,10 +31,14 @@ class OrderService:
         
         result_order_list = []
 
-        # option_size와 option_olor 값을 합친 option_info 정보 추가
+        
         for order in order_list:
             dict_order = dict(order)
+            # option_size와 option_olor 값을 합친 option_info 정보 추가
             dict_order['option_info'] = f"{dict_order['option_color']} / {dict_order['option_size']}"
+
+            # datetime 객체를 '연-월-일 시간:분:초' 형태로 변환
+            dict_order['payment_date'] = dict_order['payment_date'].strftime('%Y-%m-%d %H:%M:%S')
             result_order_list.append(dict_order)
 
         return result_order_list

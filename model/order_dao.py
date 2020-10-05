@@ -55,7 +55,7 @@ class OrderDao:
                     INNER JOIN product_info AS p_info 
                     ON p_info.product_id = oi_info.product_id
                     AND p_info.is_deleted = 0 
-                    
+
                     INNER JOIN seller_info AS s_info 
                     ON s_info.seller_id = p_info.seller_id   
                     AND s_info.end_date = '9999-12-31 23:59:59'
@@ -240,12 +240,11 @@ class OrderDao:
                     INNER JOIN order_status
                     ON order_status.id = oi_info.order_status_id
 
-                    WHERE oi_info.id = :order_item_id                    
+                    WHERE oi_info.order_detail_id = :order_item_id                    
             """
         
         # query 실행
         row = session.execute(query, {'order_item_id' : order_item_id}).fetchone()
-
         return row
 
     def select_order_histories(self, order_id, session):

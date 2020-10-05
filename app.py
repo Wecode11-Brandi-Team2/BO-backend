@@ -9,19 +9,22 @@ from model          import (
     OrderDao,
     UserDao,
     SellerDao,
-    ProductDao
+    ProductDao,
+    QnADao
 )
 from service        import (
     OrderService,
     UserService,
     SellerService,
-    ProductService
+    ProductService,
+    QnAService
 )
 from controller     import (
     create_order_endpoints,
     create_user_endpoints,
     create_seller_endpoints,
-    create_product_endpoints
+    create_product_endpoints,
+    create_qna_endpoints
 )
 
 import utils
@@ -48,17 +51,20 @@ def create_app(test_config = None):
     user_dao = UserDao()
     seller_dao = SellerDao()
     product_dao = ProductDao()
+    qna_dao = QnADao()
 
     # Business layer
     order_service = OrderService(order_dao)
     user_service = UserService(user_dao)
     seller_service = SellerService(seller_dao)
     product_service = ProductService(product_dao)
+    qna_service = QnAService(qna_dao)
 
     # Presentation layer
     app.register_blueprint(create_order_endpoints(order_service, Session))
     app.register_blueprint(create_user_endpoints(user_service, Session))
     app.register_blueprint(create_seller_endpoints(seller_service, Session))
     app.register_blueprint(create_product_endpoints(product_service, Session))
+    app.register_blueprint(create_qna_endpoints(qna_service, Session))
 
     return app

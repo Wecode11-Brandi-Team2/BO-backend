@@ -1,6 +1,8 @@
 import bcrypt
 import jwt
 
+from flask import jsonify
+
 from config import SECRET
 
 class SellerService:
@@ -178,3 +180,13 @@ class SellerService:
         check_duplication_result = self.seller_dao.check_duplication_eng(session)
 
         return check_duplication_result
+
+    def change_password(self, change_info, session):
+        origin_password = self.seller_dao.get_password(change_info, session)
+        
+        if bcrypt.checkpw(change_info['original_password'].encode('UTF-8'), origin_password['password'].encode('UTF-8')):
+            hashed_password = bcrypt.hashpw(change_info['new_password'].encode('UTF-8'), bcrypt.gensalt()).decode('UTF-8')
+
+            self.seller_dao.change_password(change_info, hashed_password, session)
+        else:
+            return jsonify({'message' : 'INVALID_PASSWORD'}), 401

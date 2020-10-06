@@ -58,3 +58,22 @@ class QnAService:
             2020-10-06 (hj885353@gmail.com) : 초기 생성
         """
         self.qna_dao.insert_answer(valid_param, session)
+
+    def delete_question(self, valid_param, session):
+        """
+        문의 사항에 대해서 답변을 삭제하는 API
+        
+        PUT method를 사용하여 is_deleted의 상태를 변경한다.
+        인자로 전달 받은 값들을 dao의 함수로 전달해준다.
+
+        Args:
+            valid_param : 글 번호를 가리키는 PATH PARAMETER
+            session : db connection 객체
+        Returns:
+            
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-06 (hj885353@gmail.com) : 초기 생성
+        """
+        self.qna_dao.delete_question(valid_param, session)

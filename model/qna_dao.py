@@ -137,4 +137,95 @@ class QnADao:
 
         return qna_list, qna_count
 
+    def qna_answer_info(self, valid_param, session):
+        """
+        Q&A list에서 답변하기 버튼 눌렀을 때, 해당 문의에 대한 info를 return해주는 API
+        valid_param 인자로부터 글 번호를 받아 해당 글 번호에 관련 된 정보를 조회하여 dict 형태로 return해준다.
+
+        Args:
+            valid_param : validate_params에서 통과 한 QueryString. 글 번호를 받아서 해당 글 번호에 대한 info를 return
+            session : db connection 객체
+        Returns:
+            qna_answer_result : 해당 글 번호에 해당하는 글 번호, 문의 유형, 닉네임, 상품명, 상품 이미지, 문의 내용, 문의 생성 시간을 return (r'type : dict)
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-06 (hj885353@gmail.com) : 초기 생성
+            2020-10-06 (hj885353@gmail.com) : QueryString을 path_parameter로 수정
+        """
         
+        # 해당 문의 내용에 대한 내용을 조회하는 쿼리문
+        answer_info_statement = """
+            SELECT
+                q.id,
+                qt.type_name,
+                u.login_id,
+                pi.name,
+                pi.main_img,
+                q.content,
+                q.created_at
+            FROM questions as q
+            LEFT JOIN question_types as qt ON qt.id = q.type_id
+            LEFT JOIN users as u ON u.id = q.user_id
+            LEFT JOIN products as p ON p.id = q.product_id
+            LEFT JOIN product_info as pi ON pi.product_id = p.id
+            WHERE q.id = :parameter_question_no
+            AND q.is_deleted = 0
+            AND u.is_deleted = 0
+            AND p.is_deleted = 0
+            AND pi.is_deleted = 0
+        """
+        # 조회한 쿼리문을 fetch 및 dict로 casting
+        answer_info = dict(session.execute(answer_info_statement, valid_param).fetchone())
+
+        return answer_info        
+
+    def insert_answer(self, valid_param, session):
+        """
+        문의 사항에 대해서 답변을 저장하는 API
+        
+        path_parameter로 문의 글 번호를 받아 해당 글에 대한 답변으로 저장
+        답변이 저장되면 questions table의 답변 여부인 is_answered = 1로 UPDATE
+
+        Args:
+            valid_param : 글 번호를 가리키는 PATH PARAMETER, 답변 내용인 answer, 답변 단 사람을 표시하기 위해 login한 seller_id를 가져옴
+            session : db connection 객체
+        Returns:
+            
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-06 (hj885353@gmail.com) : 초기 생성
+        """
+        # 인자로 받은 valid_param은 bind 되어 있기 때문에 한번 unpacking 해 준다.
+        answer_info = {
+            'question_id': valid_param['parameter_question_no'],
+            'replier_id' : valid_param['seller_info']['seller_no'],
+            'answer'     : valid_param['answer']
+        }
+        # answers table에 답변 정보를 저장
+        session.execute(("""
+            INSERT INTO answers (
+                id,
+                replier_id,
+                content,
+                created_at,
+                is_deleted                
+            ) VALUES (
+                :question_id,
+                :replier_id,
+                :answer,
+                now(),
+                0
+            )"""), answer_info)
+
+        # 답변이 달렸기 때문에 questions table의 답변 여부를 가르키는 is_answered = 1로 update
+        session.execute(("""
+            UPDATE
+                questions
+            SET
+                is_answered = 1
+            WHERE id = :question_id
+            AND is_answered = 0
+            AND is_deleted = 0
+            """), answer_info)

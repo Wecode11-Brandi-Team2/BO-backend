@@ -167,8 +167,58 @@ def create_qna_endpoints(services, Session):
 
         try:
             if session:
-                # service로부터 받은 result를 response
+                # service로 인자 전달
                 qna_service.insert_answer(valid_param, session)
+                # 정상 동작 시 commit
+                session.commit()
+
+                return jsonify({'message' : 'SUCCESS'})
+            else:
+                # db connection error
+                return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
+
+        except Exception as e:
+            # 에러 발생 시 롤백
+            session.rollback()
+            return jsonify({'message': f'{e}'}), 500
+
+        finally:
+            session.close()
+
+    @qna_bp.route('/<int:parameter_question_no>', methods = ['PUT'], endpoint = 'delete_answer')
+    @login_required(Session)
+    @validate_params(
+        Param('parameter_question_no', PATH, int, required = True)
+    )
+    def delete_question(*args, **kwargs):
+        """
+        문의 사항에 대해서 답변을 삭제하는 API
+        
+        PUT method를 사용하여 is_deleted의 상태를 변경한다.
+        validate_params를 통과한 값을 인자로 받고 해당 인자를 service의 함수로 전달해준다.
+
+        Args:
+            valid_param : 글 번호를 가리키는 PATH PARAMETER
+            session : db connection 객체
+        Returns:
+            SUCCESS, 200
+            DB_ERROR, 500
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-06 (hj885353@gmail.com) : 초기 생성
+        """
+        valid_param = {
+            'parameter_question_no': args[0],
+        }
+    
+        # db connection 객체 생성    
+        session = Session()
+
+        try:
+            if session:
+                # service로 인자 전달
+                qna_service.delete_question(valid_param, session)
                 # 정상 동작 시 commit
                 session.commit()
 

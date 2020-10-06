@@ -229,3 +229,56 @@ class QnADao:
             AND is_answered = 0
             AND is_deleted = 0
             """), answer_info)
+
+    def delete_question(self, valid_param, session):
+        """
+        문의 사항에 대해서 답변을 삭제하는 API
+        
+        PUT method를 사용하여 is_deleted의 상태를 변경한다.
+        실제 데이터를 삭제하지는 않고, is_deleted = 1로 상태를 변경하여 삭제 된 것으로 처리하는 soft_delete 사용
+        해당 문의 사항에 대한 답변이 달려있는지 조건 판별 후 문의 사항이 지워질 때 답변도 soft delete 처리
+
+        Args:
+            valid_param : 글 번호를 가리키는 PATH PARAMETER
+            session : db connection 객체
+        Returns:
+            
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-06 (hj885353@gmail.com) : 초기 생성
+        """
+        # 인자로 받은 valid_param을 dict로 unpacking
+        delete_info = {
+            'question_id' : valid_param['parameter_question_no']
+        }
+
+        # is_deleted의 상태를 변경하는 쿼리문
+        session.execute(("""
+            UPDATE 
+                questions
+            SET
+                is_deleted = 1
+            WHERE id = :question_id
+            AND is_deleted = 0
+            """), delete_info)
+
+        # questions Table에서 답변 여부를 조회하기 위한 쿼리문
+        question_answered_statement = """
+            SELECT
+                q.is_answered
+            FROM questions as q
+            WHERE q.id = :question_id
+        """
+        is_answered = dict(session.execute(question_answered_statement, delete_info).fetchone())
+        
+        # 조회 했을 때, 답변의 상태가 1인 경우 answers Table에서도 is_deleted = 1로 상태 변경 ( 답변이 달려 있는 경우 )
+        if is_answered['is_answered'] == 1:
+            session.execute(("""
+                UPDATE
+                    answers
+                SET
+                    is_deleted = 1
+                WHERE id = :question_id
+                AND is_deleted = 0
+                """), delete_info)

@@ -3,11 +3,13 @@ from .user_service import UserService
 from .seller_service import SellerService
 from .product_service import ProductService
 from .qna_service import QnAService
+from .review_service import ReviewService
 
 __all__ = [ 
     'OrderService',
     'UserService',
     'SellerService',
     'ProductService',
-    'QnAService'
+    'QnAService',
+    'ReviewService'
 ]

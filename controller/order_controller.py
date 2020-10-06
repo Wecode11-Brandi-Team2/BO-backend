@@ -419,7 +419,7 @@ def create_order_endpoints(order_service, Session):
     # 환불요청 -> 환불완료 : 최종환불
     @order_app.route('/refundComplete', methods=['POST'], endpoint='refund_complete')
     @validate_params(
-        Param('orderItemId', JSON, list, required=True), # 주문 상세 번호
+        Param('orderItemId', JSON, list, required=True) # 주문 상세 번호
     )
     def refund_complete(*args, **kwargs):
         
@@ -480,4 +480,68 @@ def create_order_endpoints(order_service, Session):
             # session close, transaction 종료
             session.close()
 
+    # 환불요청취소
+    @order_app.route('/cancelRefundRequest', methods=['POST'], endpoint='cancel_refund_request')
+    @validate_params(
+        Param('orderItemId',          JSON, list, required=True), # 주문 상세 번호
+        Param('restoreOrderStatusId', JSON, int,  required=True)  # 복귀될 주문상태번호
+    )
+    def cancel_refund_request(*args, **kwargs):
+
+        """
+        환불요청취소 엔드포인트
+            환불요청상태의 주문에 대해 환불요청취소 처리를 수행하는 엔드포인트 입니다.
+            선분이력관리를 위해 환불요청상태이력을 삭제시키고 배송중/배송완료상태이력으로 되돌립니다.
+
+        args :
+            validate_params() 유효성 검사를 통과한 환불요청취소정보
+
+        returns :
+            200: 환불요청취소 성공메세지
+            500: DB_CONNECTION_TIMEOUT, ERROR
+
+        Authors:
+            eymin1259@gmail.com 이용민
+
+        History:
+            2020-10-05 (이용민) : 초기 생성
+        """
+
+        # 세션 인스턴스 생성 : connection open, transaction begin
+        session = Session()
+
+        try:
+
+            # 환불요청취소 하고싶은 주문리스트 생성 : [{주문1}, {주문2}, ... ]
+            # 원소 = {주문상세번호, 환불요청취소정보}            
+            restore_order_list = []
+
+            for count in range (0, len(args[0])):
+                restore_order_list.append({
+                    'order_item_id'           : args[0][count], # 주문 상세 번호
+                    'restore_order_status_id' : args[1]         # 복귀될 주문상태번호
+                })
+            
+
+            # 환불요청취소 비즈니스 로직 호출
+            order_service.cancel_refund_request(restore_order_list, session)
+
+            session.commit()
+
+            return jsonify({'MESSAGE': 'CANCEL_REFUND_REQUEST_SUCCESS' }), 200
+            
+        except TimeoutError:
+            # DB connection timeout error
+            return jsonify({'ERROR_MSG': 'DB_CONNECTION_TIMEOUT'}), 500
+
+        except Exception as e:
+            # global error handling
+            session.rollback()
+            return jsonify({'ERROR_MSG': f'{e}'}), 500
+
+        finally:
+            # session close, transaction 종료
+            session.close()
+
+    
     return order_app

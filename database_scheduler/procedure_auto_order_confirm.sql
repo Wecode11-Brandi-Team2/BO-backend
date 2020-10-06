@@ -1,6 +1,6 @@
 DELIMITER $$
 DROP PROCEDURE IF EXISTS AUTO_ORDER_CONFIRM
-CREATE PROCEDURE AUTO_ORDER_CONFIRM()
+CREATE PROCEDURE AUTO_ORDER_CONFIRM( OUT RESULT INT)
 /*
 AUTO_ORDER_CONFIRM 프로시저
 	order_item_info 테이블에 배송완료상태 주문을 이력 종료시키고, 구매확정상태 주문을 새로 생성한다.
@@ -55,7 +55,7 @@ BEGIN
     DECLARE _oii_modifier_id INT;
     DECLARE _oii_is_deleted TINYINT;
 
-	/* order_item_info 테이블에서 배송완료일이 3일이상 지난 row들을 읽어오는 커서를 생성. */
+	/* order_item_info 테이블에서 배송완료일(order_status_id = 4)이 3일이상 지난 row들을 읽어오는 커서를 생성. */
 	DECLARE CURSOR_ORDER_ITEM_INFO CURSOR FOR SELECT * FROM order_item_info WHERE order_status_id = 4 AND shipping_complete_date <= DATE_SUB(now(), interval 3 day);
 
 	/* 커서 종료조건 : 더이상 없다면 종료 */
@@ -68,13 +68,17 @@ BEGIN
         IF NOT _done THEN
 
             /* 배송완료상태 종료*/
-            UPDATE order_item_info SET end_date = auto_comfirm_time, is_deleted = 1 WHERE id = _oii_id;
+            UPDATE order_item_info 
+            SET end_date = auto_comfirm_time, is_deleted = 1 
+            WHERE id = _oii_id;
             
             /* fetch한 배송완료상태 주문 정보를 가지고 구매확정상태 주문 생성*/
-            INSERT INTO order_item_info VALUES( DEFAULT, _oii_order_detail_id, _oii_order_id, 5, _oii_product_id, _oii_price, _oii_option_color, _oii_option_size, _oii_option_additional_price, _oii_units, _oii_discount_price, _oii_shipping_start_date, _oii_shipping_complete_date, _oii_shipping_company, _oii_shipping_number, 1, _oii_refund_request_date, _oii_refund_complete_date, _oii_refund_reason_id, _oii_refund_amount, _oii_refund_shipping_fee, _oii_detail_reason, _oii_bank, _oii_account_holder, _oii_account_number, _oii_cancel_reason_id, _oii_complete_cancellation_date, auto_comfirm_time, '9999-12-31 23:59:59', _oii_modifier_id, 0 ); 
+            INSERT INTO order_item_info 
+            VALUES( DEFAULT, _oii_order_detail_id, _oii_order_id, 5, _oii_product_id, _oii_price, _oii_option_color, _oii_option_size, _oii_option_additional_price, _oii_units, _oii_discount_price, _oii_shipping_start_date, _oii_shipping_complete_date, _oii_shipping_company, _oii_shipping_number, 1, _oii_refund_request_date, _oii_refund_complete_date, _oii_refund_reason_id, _oii_refund_amount, _oii_refund_shipping_fee, _oii_detail_reason, _oii_bank, _oii_account_holder, _oii_account_number, _oii_cancel_reason_id, _oii_complete_cancellation_date, auto_comfirm_time, '9999-12-31 23:59:59', _oii_modifier_id, 0 ); 
 
             SET _row_count = _row_count + 1;
 			SET _done = FALSE;
+
 		END IF;
 	UNTIL _done END REPEAT;
 

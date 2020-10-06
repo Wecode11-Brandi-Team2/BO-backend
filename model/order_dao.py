@@ -778,4 +778,95 @@ class OrderDao:
             'order_item_id' : refund_complete['order_item_id'],
             'order_status_id' : refund_complete['order_status_id']
             })
-        
+
+    def restore_record(self, restore_order, updated_at, session):
+        """
+        이전 주문상태로 되돌리는 로직
+            updated_at 시간에 종료된 상태를 그 이전 상태로 되돌려 새로운 row를 생성합니다.
+            
+        args :
+            restore_order   : 이전상태로 되돌릴 주문의 주문상세번호 및 주문상태정보가 담긴 딕셔너리
+            updated_at      : 이력 수정시간
+
+        Authors:
+            eymin1259@gmail.com 이용민
+
+        History:
+            2020-10-06 (이용민) : 초기 생성
+        """
+
+        query = """ INSERT INTO 
+                        order_item_info 
+                            (
+                                order_detail_id,
+                                order_id,
+                                order_status_id,
+                                product_id,
+                                price,
+                                option_color,
+                                option_size,
+                                option_additional_price,
+                                units,
+                                discount_price,
+                                shipping_start_date,
+                                shipping_complete_date,
+                                shipping_company,
+                                shipping_number,
+                                is_confirm_order,
+                                refund_request_date,
+                                refund_complete_date,
+                                refund_reason_id,
+                                refund_amount,
+                                refund_shipping_fee,
+                                detail_reason,
+                                bank,
+                                account_holder,
+                                account_number,
+                                cancel_reason_id,
+                                complete_cancellation_date,
+                                start_date,
+                                end_date,
+                                modifier_id
+                            )
+                    SELECT 
+                        order_detail_id,
+                        order_id,
+                        :order_status_id,
+                        product_id,
+                        price,
+                        option_color,
+                        option_size,
+                        option_additional_price,
+                        units,
+                        discount_price,
+                        shipping_start_date,
+                        shipping_complete_date,
+                        shipping_company,
+                        shipping_number,
+                        is_confirm_order,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        cancel_reason_id,
+                        complete_cancellation_date,
+                        :updated_at,
+                        '9999-12-31 23:59:59',
+                        modifier_id
+                    FROM
+                        order_item_info
+                    WHERE
+                        order_item_info.order_detail_id = :order_item_id
+                        AND end_date = :updated_at
+                        AND is_deletd = 1
+                """ 
+        session.execute(query, {
+            'updated_at'    : updated_at,
+            'order_item_id' : restore_order['order_item_id'],
+            'order_status_id' : restore_order['restore_order_status_id']
+            })

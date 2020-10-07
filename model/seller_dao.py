@@ -27,15 +27,19 @@ class SellerDao:
         History:
             2020-09-23 (hj885353@gmail.com) : 초기 생성
             2020-09-24 (hj885353@gmail.com) : seller_id, manager_id, modifier_id가 연결되도록 수정
+            2020-10-07 (hj885353@gmail.com) : schema 변경으로 쿼리문 수정
+                기존 : seller_info Table -> loginID
+                변경 : sellers Table -> login_id
         """
         # sellers table에 data를 input
         seller_query = """
             INSERT INTO sellers (
+                login_id,
                 is_admin,
                 created_at,
                 is_deleted
             )VALUES """
-        values = f"(0, now(), 0)"
+        values = f"('{seller_info['seller_loginID']}', 0, now(), 0)"
         seller_query += values
         new_seller = session.execute(seller_query)
         # 새로 insert 되는 seller_id를 lastrowid를 사용하여 seller_info에 연결
@@ -56,7 +60,6 @@ class SellerDao:
         # seller_info table에 data를 input
         seller_info_query = """
             INSERT INTO seller_info (
-                seller_loginID,
                 password, 
                 korean_name,
                 eng_name,
@@ -71,7 +74,7 @@ class SellerDao:
                 end_date,
                 is_deleted
             ) VALUES """
-        values = f"('{seller_info['seller_loginID']}', '{seller_info['hashed_password']}', '{seller_info['korean_name']}', '{seller_info['eng_name']}', '{seller_info['center_number']}' , '{seller_info['site_url']}', {new_seller_last_id}, {seller_info['attribute_id']}, 1, {new_manager_last_id}, {new_seller_last_id}, now(), '9999-12-31 23:59:59', 0)"
+        values = f"('{seller_info['hashed_password']}', '{seller_info['korean_name']}', '{seller_info['eng_name']}', '{seller_info['center_number']}' , '{seller_info['site_url']}', {new_seller_last_id}, {seller_info['attribute_id']}, 1, {new_manager_last_id}, {new_seller_last_id}, now(), '9999-12-31 23:59:59', 0)"
         seller_info_query += values
         seller_info = session.execute(seller_info_query)
 
@@ -91,6 +94,9 @@ class SellerDao:
             hj885353@gmail.com(김해준)
         History:
             2020-09-25 (hj885353@gmail.com) : 초기 생성
+            2020-10-07 (hj885353@gmail.com) : schema 변경으로 쿼리문 수정
+                기존 : seller_info Table -> loginID
+                변경 : sellers Table -> login_id
         """
         # request로 들어 온 ID에 해당하는 password를 가지고 와서 fetch. return type : tuple
         seller_info_statement = """
@@ -100,8 +106,7 @@ class SellerDao:
             FROM
                 seller_info
             LEFT OUTER JOIN sellers ON sellers.id = seller_info.seller_id
-            WHERE
-                sellers.login_id = :login_id
+            WHERE sellers.login_id = :login_id
         """
         seller = session.execute(seller_info_statement, seller_info).fetchone()
         # tuple -> dictionary로 casting해서 return
@@ -122,12 +127,15 @@ class SellerDao:
             hj885353@gmail.com(김해준)
         History:
             2020-09-28(hj885353@gmail.com): 초기 생성
+            2020-10-07 (hj885353@gmail.com) : schema 변경으로 쿼리문 수정
+                기존 : seller_info Table -> loginID
+                변경 : sellers Table -> login_id
         """
         # 키워드 검색을 위한 쿼리문
         select_seller_list_statement = """
             SELECT
                 seller_info.seller_id,
-                seller_loginID,
+                sellers.login_id,
                 eng_name,
                 korean_name,
                 managers.name,
@@ -170,8 +178,8 @@ class SellerDao:
 
         # 셀러 아이디
         if valid_param.get('mber_ncnm', None):
-            select_seller_list_statement += " AND seller_loginID = :mber_ncnm"
-            filter_query_values_count_statement += " AND seller_loginID = : mber_ncnm"
+            select_seller_list_statement += " AND sellers.login_id = :mber_ncnm"
+            filter_query_values_count_statement += " AND sellers.login_id = :mber_ncnm"
 
         # 영어 이름
         if valid_param.get('mber_en', None):
@@ -340,7 +348,17 @@ class SellerDao:
             hj885353@gmail.com (김해준)
         History:
             2020-10-01 (hj885353@gmail.com) : 초기 생성
+            2020-10-07 (hj885353@gmail.com)
+                기존 : now()를 바로 사용
+                변경 : db에서 now()를 미리 조회 한 후 해당 값을 변수에 할당하여 그 값을 INSERT 및 UPDATE로 선분이력 관리되도록 변경
+                    : 새로운 row INSERT 시 password가 INSERT 되지 않아 해당 부분 수정
         """
+        # 선분이력에 사용 할 now를 db에서 조회
+        now = session.execute("""
+            SELECT
+                now()            
+        """).fetchone()
+
         # 인자로 받은 seller_info_data의 값을 가지고 와서 db에 넣어주기 위한 작업
         seller_info = {
               'image_url'                       : seller_info_data['seller_data']['image_url'],
@@ -371,13 +389,25 @@ class SellerDao:
               'update_feed_message'             : seller_info_data['seller_data']['update_feed_message']
         }
 
+        password = session.execute(("""
+            SELECT
+                password
+            FROM seller_info
+            WHERE seller_id = :seller_no
+            AND is_deleted = 0
+        """), seller_info).fetchone()
+
+        # db에서 조회한 ResultProxy를 dict에 추가시켜줌
+        seller_info['now'] = now['now()']
+        seller_info['password'] = password['password']
+
         # 삭제여부, 선분이력 종료시간에 대한 정보를 업데이트 할 쿼리문
         session.execute(("""
             UPDATE
                 seller_info
             SET
                 is_deleted = 1,
-                end_date = now()
+                end_date = :now
             WHERE seller_id = :seller_no
             AND is_deleted = 0
             """), seller_info)
@@ -392,6 +422,7 @@ class SellerDao:
                 manager_id,
                 korean_name,
                 eng_name,
+                password,
                 seller_page_background_image_url,
                 simple_description,
                 detail_description,
@@ -422,6 +453,7 @@ class SellerDao:
                 :manager_id,
                 :korean_name,
                 :eng_name,
+                :password,
                 :seller_page_background_image_url,
                 :simple_description,
                 :detail_description,
@@ -441,7 +473,7 @@ class SellerDao:
                 :model_pants_size,
                 :model_foots_size,
                 :update_feed_message,
-                now(),
+                :now,
                 '9999-12-31 23:59:59',
                 0
             )"""), seller_info)
@@ -465,54 +497,62 @@ class SellerDao:
                 :manager_email
             )"""), manager_info)
 
-    def check_duplication_kor(self, session):
+    def check_duplication_kor(self, kor_name, session):
         """
         셀러 정보 수정에서 한글 셀러명에 대한 중복검사를 하기 위해 DB에서 한글 셀러명을 조회하는 함수
 
         Args:
+            kor_name : request로부터 받아 온 사용자가 입력 한 한글 셀러명
             session: db connection 객체
         Returns:
-            seller_kor_name: DB에서 가져온 한글 셀러명 list (r'type : list)
+            seller_kor_name: DB에서 가져온 일치하는 한글 셀러명의 갯수(r'type : int)
         Authors:
             hj885353@gmail.com (김해준)
         History:
             2020-10-02 (hj885353@gmail.com) : 초기 생성
+            2020-10-07 (hj885353@gmail.com)
+                기존 : DB의 한글 셀러명을 모두 다 가져와서 list에 append 후 존재하는지 look up 하는 로직
+                변경 : DB에 request로 넘어온 한글 셀러명이 존재하는지 count로 확인. 존재하는 경우 count = 1, 존재하지 않는 경우 count = 0. 이걸로 판별하도록 변경
         """
-        # DB에 있는 한글 셀러명 중 삭제되지 않은 row에 한해서 한글 셀러명을 모두 가져온다.
+        # DB에 있는 한글 셀러명 중 인자로 넘어온 kor_name이 있는지 조회하는 쿼리문
         seller_kor_name_statement = """
             SELECT
                 korean_name
             FROM seller_info
-            WHERE is_deleted = 0
+            WHERE korean_name = :korean_name 
+            AND is_deleted = 0
         """
-        seller_kor_name = session.execute(seller_kor_name_statement).fetchall()
-        seller_kor_name = [ dict(kor_name) for kor_name in seller_kor_name ]
-
+        # rowcount로 일치하는 한글 셀러명의 수를 count한다. 있을 경우 1, 없을 경우 0
+        seller_kor_name = session.execute(seller_kor_name_statement, kor_name).rowcount
         return seller_kor_name
 
-    def check_duplication_eng(self, session):
+    def check_duplication_eng(self, eng_name, session):
         """
-        셀러 정보 수정에서 영어 셀러명에 대한 중복검사를 하기 위해 DB에서 영어 셀러명을 조회하는 함수
+        셀러 정보 수정에서 영문 셀러명에 대한 중복검사를 하기 위해 DB에서 영문 셀러명을 조회하는 함수
 
         Args:
+            eng_name : request로부터 받아 온 사용자가 입력 한 영문 셀러명
             session: db connection 객체
         Returns:
-            seller_eng_name: DB에서 가져온 영어 셀러명 list (r'type : list)
+            seller_eng_name: DB에서 가져온 일치하는 영문 셀러명의 갯수(r'type : int)
         Authors:
             hj885353@gmail.com (김해준)
         History:
             2020-10-02 (hj885353@gmail.com) : 초기 생성
+            2020-10-07 (hj885353@gmail.com)
+                기존 : DB의 영문 셀러명을 모두 다 가져와서 list에 append 후 존재하는지 look up 하는 로직
+                변경 : DB에 request로 넘어온 영문 셀러명이 존재하는지 count로 확인. 존재하는 경우 count = 1, 존재하지 않는 경우 count = 0. 이걸로 판별하도록 변경
         """
-        # DB에 있는 영어 셀러명 중 삭제되지 않은 row에 한해서 영어 셀러명을 모두 가져온다.
+        # DB에 있는 한글 셀러명 중 인자로 넘어온 eng_name이 있는지 조회하는 쿼리문
         seller_eng_name_statement = """
             SELECT
                 eng_name
             FROM seller_info
-            WHERE is_deleted = 0
+            WHERE eng_name = :eng_name
+            AND is_deleted = 0
         """
-        seller_eng_name = session.execute(seller_eng_name_statement).fetchall()
-        seller_eng_name = [ dict(eng_name) for eng_name in seller_eng_name ]
-
+        # rowcount로 일치하는 영문 셀러명의 수를 count한다. 있을 경우 1, 없을 경우 0
+        seller_eng_name = session.execute(seller_eng_name_statement, eng_name).rowcount
         return seller_eng_name
 
     def get_password(self, change_info, session):

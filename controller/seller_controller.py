@@ -320,6 +320,9 @@ def create_seller_endpoints(services, Session):
             hj885353@gmail.com (김해준)
         History:
             2020-10-02 (hj885353@gmail.com) : 초기 생성
+            2020-10-07 (hj885353@gmail.com)
+                기존 : DB의 한글 셀러명을 모두 다 가져와서 list에 append 후 존재하는지 look up 하는 로직
+                변경 : DB에 request로 넘어온 한글 셀러명이 존재하는지 count로 확인. 존재하는 경우 count = 1, 존재하지 않는 경우 count = 0. 이걸로 판별하도록 변경
         """
         kor_name = request.json
 
@@ -328,17 +331,13 @@ def create_seller_endpoints(services, Session):
         try:
             if session:
                 # service의 check_duplication_kor 함수로 전달
-                check_duplication_result = seller_service.check_duplication_kor(session)
+                check_duplication_result = seller_service.check_duplication_kor(kor_name, session)
 
-                # list안에 dict 형태로 받아오기 때문에 look up을 수행하기 위해서 dict의 values를 새로운 list로 만들어줌
-                name_list = [ name['korean_name'] for name in check_duplication_result ]
-
-                # db에 존재하지 않을 경우 사용 가능하다는 메세지와 status 200 return
-                if not kor_name['korean_name'] in name_list:
+                # rowcount == 0인 경우. 즉, DB에 일치하는 한글 셀러명이 없을 경우
+                if check_duplication_result == 0:
                     return jsonify({'message' : 'USABLE_NAME'}), 200
-                else:
-                    # 이미 사용중인 한글 셀러명일 경우
-                    return jsonify({'message' : 'DUPLICATED_NAME'}), 400
+                # 이미 사용중인 한글 셀러명일 경우
+                return jsonify({'message' : 'DUPLICATED_NAME'}), 400
 
             return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
         
@@ -352,18 +351,21 @@ def create_seller_endpoints(services, Session):
     @login_required(Session)
     def check_duplication_eng():
         """
-        셀러 정보 수정 관리 중 영어 셀러명을 변경할 때 셀러명에 대한 중복 검사를 실시하는 함수
+        셀러 정보 수정 관리 중 영문 셀러명을 변경할 때 셀러명에 대한 중복 검사를 실시하는 함수
 
         Args:
             
         Returns:
-            사용 가능한 영어 셀러명: USABLE, 200
-            중복인 엉어 셀러명: DUPLICATED_NAME, 400
+            사용 가능한 영문 셀러명: USABLE, 200
+            중복인 영문 셀러명: DUPLICATED_NAME, 400
             DB_CONNECTION_ERROR, 500
         Authors:
             hj885353@gmail.com (김해준)
         History:
             2020-10-02 (hj885353@gmail.com) : 초기 생성
+            2020-10-07 (hj885353@gmail.com)
+                기존 : DB의 영문 셀러명을 모두 다 가져와서 list에 append 후 존재하는지 look up 하는 로직
+                변경 : DB에 request로 넘어온 영문 셀러명이 존재하는지 count로 확인. 존재하는 경우 count = 1, 존재하지 않는 경우 count = 0. 이걸로 판별하도록 변경
         """
         eng_name = request.json
 
@@ -372,17 +374,13 @@ def create_seller_endpoints(services, Session):
         try:
             if session:
                 # service의 check_duplication_eng 함수로 전달
-                check_duplication_result = seller_service.check_duplication_eng(session)
+                check_duplication_result = seller_service.check_duplication_eng(eng_name, session)
 
-                # list안에 dict 형태로 받아오기 때문에 look up을 수행하기 위해서 dict의 values를 새로운 list로 만들어줌
-                name_list = [ name['eng_name'] for name in check_duplication_result ]
-
-                # db에 존재하지 않을 경우 사용 가능하다는 메세지와 status 200 return
-                if not eng_name['eng_name'] in name_list:
+                # rowcount == 0인 경우. 즉, DB에 일치하는 영문 셀러명이 없을 경우
+                if check_duplication_result == 0:
                     return jsonify({'message' : 'USABLE_NAME'}), 200
-                else:
-                    # 이미 사용중인 영어 셀러명일 경우
-                    return jsonify({'message' : 'DUPLICATED_NAME'}), 400
+                # 이미 사용중인 영문 셀러명일 경우
+                return jsonify({'message' : 'DUPLICATED_NAME'}), 400
 
             return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
         

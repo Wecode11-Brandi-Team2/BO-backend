@@ -145,39 +145,47 @@ class SellerService:
         """
         change_seller_info_result = self.seller_dao.change_seller_info(seller_info_data, session)
 
-    def check_duplication_kor(self, session):
+    def check_duplication_kor(self, kor_name, session):
         """
         셀러 정보 수정 관리 중 한글 셀러명을 변경할 때 셀러명에 대한 중복 검사를 실시하는 함수
         controller와 dao를 연결시켜주는 함수
 
         Args:
+            kor_name : request로부터 받아 온 사용자가 입력한 한글 셀러명
             session: db connection 객체
         Returns:
-            check_duplication_result: DB에서 가져온 한글 셀러명 list (r'type : list)
+            check_duplication_result: DB에서 가져온 일치하는 한글 셀러명의 갯수(r'type : int)
         Authors:
             hj885353@gmail.com (김해준)
         History:
             2020-10-02 (hj885353@gmail.com) : 초기 생성
+            2020-10-07 (hj885353@gmail.com)
+                기존 : DB의 한글 셀러명을 모두 다 가져와서 list에 append 후 존재하는지 look up 하는 로직
+                변경 : DB에 request로 넘어온 한글 셀러명이 존재하는지 count로 확인. 존재하는 경우 count = 1, 존재하지 않는 경우 count = 0. 이걸로 판별하도록 변경
         """
-        check_duplication_result = self.seller_dao.check_duplication_kor(session)
+        check_duplication_result = self.seller_dao.check_duplication_kor(kor_name, session)
 
         return check_duplication_result
 
-    def check_duplication_eng(self, session):
+    def check_duplication_eng(self, eng_name, session):
         """
-        셀러 정보 수정 관리 중 영어 셀러명을 변경할 때 셀러명에 대한 중복 검사를 실시하는 함수
+        셀러 정보 수정 관리 중 영문 셀러명을 변경할 때 셀러명에 대한 중복 검사를 실시하는 함수
         controller와 dao를 연결시켜주는 함수
 
         Args:
+            eng_name : request로부터 받아 온 사용자가 입력한 영문 셀러명
             session: db connection 객체
         Returns:
-            check_duplication_result: DB에서 가져온 영어 셀러명 list (r'type : list)
+            check_duplication_result: DB에서 가져온 일치하는 영문 셀러명의 갯수(r'type : int)
         Authors:
             hj885353@gmail.com (김해준)
         History:
             2020-10-02 (hj885353@gmail.com) : 초기 생성
+            2020-10-07 (hj885353@gmail.com)
+                기존 : DB의 영문 셀러명을 모두 다 가져와서 list에 append 후 존재하는지 look up 하는 로직
+                변경 : DB에 request로 넘어온 영문 셀러명이 존재하는지 count로 확인. 존재하는 경우 count = 1, 존재하지 않는 경우 count = 0. 이걸로 판별하도록 변경
         """
-        check_duplication_result = self.seller_dao.check_duplication_eng(session)
+        check_duplication_result = self.seller_dao.check_duplication_eng(eng_name, session)
 
         return check_duplication_result
 

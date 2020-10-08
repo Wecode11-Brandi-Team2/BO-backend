@@ -1,6 +1,7 @@
 import re
 import uuid
 
+from sqlalchemy import exc
 from flask import jsonify, Blueprint, request
 from flask_request_validator import (
     GET,
@@ -10,14 +11,14 @@ from flask_request_validator import (
     validate_params
 )
 
-from utils import login_required
+from utils import login_required, allowed_file
 
 def create_product_endpoints(product_service, Session):
 
     product_app = Blueprint('product_app', __name__, url_prefix='/api/product')
 
-    @product_app.route('/products', methods = ['GET'])
-    # @login_required(Session)
+    @product_app.route('/products', methods = ['GET'], endpoint='products')
+    @login_required(Session)
     @validate_params(
         Param('filterLimit', GET, int, default=10, required=False),
         Param('page', GET, int, required=False),
@@ -97,20 +98,7 @@ def create_product_endpoints(product_service, Session):
             # 조회 기간 끝
             filter_dict['filterDateTo'] = args[10]
 
-            body = [{
-                'created_at'       : product.created_at,
-                'main_image'       : product.main_img,
-                'product_name'     : product.name,
-                'product_code'     : product.product_code,
-                'product_id'       : product.id,
-                'attribution_name' : product.attribution_name,
-                'seller_name'      : product.korean_name,
-                'price'            : product.price,
-                'discount_price'   : product.discount_price,
-                'is_displayed'     : product.is_displayed,
-                'is_on_sale'       : product.is_on_sale,
-                'is_promotion'     : product.is_promotion
-            } for product in product_service.get_products(filter_dict, session)]
+            body = [dict(product) for product in product_service.get_products(filter_dict, session)]
 
             return jsonify(body), 200
 
@@ -120,8 +108,8 @@ def create_product_endpoints(product_service, Session):
         finally:
             session.close()
 
-    @product_app.route('/<int:product_id>', methods=['GET'])
-    # @login_required(Session)
+    @product_app.route('/<int:product_id>', methods=['GET'], endpoint='product')
+    @login_required(Session)
     def product(product_id):
         """ 상품 수정 시 기존 등록 정보 전달 API
 
@@ -143,25 +131,7 @@ def create_product_endpoints(product_service, Session):
         session = Session()
         try:
             # 상품 데이터
-            product = product_service.get_product(product_id, session)
-
-            body = {
-                'id'              : product['p_id'],
-                'product_code'    : product['p_code'],
-                'is_on_sale'      : product['is_on_sale'],
-                'product_name'    : product['name'],
-                'simple_desc'     : product['simple_description'],
-                'images'          : product['images'],
-                'price'           : product['price'],
-                'detail_desc'     : product['detail_description'],
-                'discount_price'  : product['discount_price'],
-                'discount_rate'   : product['discount_rate'],
-                'is_definite'     : product['is_definite'],
-                'min_unit'        : product['min_unit'],
-                'max_unit'        : product['max_unit'],
-                'first_category'  : product['first_category_name'],
-                'second_category' : product['second_category_name']
-            }
+            body = dict(product_service.get_product(product_id, session))
 
             return jsonify(body), 200
 
@@ -171,8 +141,8 @@ def create_product_endpoints(product_service, Session):
         finally:
             session.close()
 
-    @product_app.route('/excel', methods=['GET'])
-    # @login_required(Session)
+    @product_app.route('/excel', methods=['GET'], endpoint='make_excel')
+    @login_required(Session)
     def make_excel():
         """ 상품 정보 엑셀 다운로드 API
 
@@ -207,7 +177,8 @@ def create_product_endpoints(product_service, Session):
         finally:
             session.close()
 
-    @product_app.route('/seller', methods=['GET'])
+    @product_app.route('/seller', methods=['GET'], endpoint='sellers')
+    @login_required(Session)
     @validate_params(
         Param('q', GET, str, required = True)
     )
@@ -236,14 +207,7 @@ def create_product_endpoints(product_service, Session):
             seller_dict['name'] = args[0]
 
             # 셀러 데이터
-            sellers = product_service.get_sellers(seller_dict, session)
-
-            body = [{
-                'id'           : seller['s_id'],
-                'name'         : seller['korean_name'],
-                'image_url'    : seller['image_url'],
-                'attribute_id' : seller['attr_id']
-            } for seller in sellers]
+            body = [dict(seller) for seller in product_service.get_sellers(seller_dict, session)]
 
             return jsonify(body), 200
 
@@ -253,8 +217,8 @@ def create_product_endpoints(product_service, Session):
         finally:
             session.close()
 
-
-    @product_app.route('/category', methods=['GET'])
+    @product_app.route('/category', methods=['GET'], endpoint='product_categories')
+    @login_required(Session)
     def product_categories():
         """ 1차, 2차 카테고리 정보 전달 API
 
@@ -303,19 +267,20 @@ def create_product_endpoints(product_service, Session):
         finally:
             session.close()
 
-    @product_app.route('', methods=['POST', 'UPDATE'])
+    @product_app.route('', methods=['POST'], endpoint='insert_product')
     # @login_required(Session)
     def insert_product():
         """ 상품 정보 등록 API
 
         returns :
-            200: 상품 정보 데이터를베이스에 저장
+            200: 상품 정보를 데이터베이스에 저장
             400:
                 NAME_CANNOT_CONTAIN_QUOTATION_MARK,
                 START_DATE_CANNOT_BE_EARLIER_THAN_END_DATE,
                 CANNOT_SET_MORE_THAN_20,
                 CANNOT_SET_LESS_THAN_10,
-                DISCOUNT_RANGE_CAN_BE_SET_FROM_0_TO_99
+                DISCOUNT_RANGE_CAN_BE_SET_FROM_0_TO_99,
+                DUPLICATE_DATA
             500: Exception
 
         Authors:
@@ -327,68 +292,81 @@ def create_product_endpoints(product_service, Session):
         """
         session = Session()
         try:
-            if request.method == 'POST':
-                # 상품 코드
-                product_code = str(uuid.uuid4())
+            # 상품명에 ' 또는 " 포함 되었는지 체크
+            pattern = re.compile('[\"\']')
+            if pattern.search(request.form['name']):
+                return jsonify({'message': 'NAME_CANNOT_CONTAIN_QUOTATION_MARK'}), 400
 
-                # S3 이미지 저장
-                # for i in (1, 6):
-                image_1 = request.files.get('image_1', None)
-                image_url = product_service.save_product_image(image_1, product_code)
+            # 할인 시작일이 할인 종료일보다 빠를 경우
+            if request.form['discount_start_date'] > request.form['discount_end_date']:
+                return jsonify({'message': 'START_DATE_CANNOT_BE_EARLIER_THAN_END_DATE'}), 400
 
-                # 상품명에 ' 또는 " 포함 되었는지 체크
-                pattern = re.compile('[\"\']')
-                if pattern.search(request.form['name']):
-                    return jsonify({'message' : 'NAME_CANNOT_CONTAIN_QUOTATION_MARK'}), 400
+            # 최소 수량 또는 최대 수량이 20을 초과할 경우
+            if int(request.form['min_unit']) > 20 or int(request.form['max_unit']) > 20:
+                return jsonify({'message': 'CANNOT_SET_MORE_THAN_20'}), 400
 
-                # 할인 시작일이 할인 종료일보다 빠를 경우
-                if request.form['discount_start_date'] > request.form['discount_end_date']:
-                    return jsonify({'message': 'START_DATE_CANNOT_BE_EARLIER_THAN_END_DATE'}), 400
+            # 판매가가 10원 미만일 경우
+            if int(request.form['price']) < 10:
+                return jsonify({'message': 'CANNOT_SET_LESS_THAN_10'}), 400
 
-                # 최소 수량 또는 최대 수량이 20을 초과할 경우
-                if int(request.form['min_unit']) > 20 or int(request.form['max_unit']) > 20:
-                    return jsonify({'message': 'CANNOT_SET_MORE_THAN_20'}), 400
+            # 할인률이 0 ~ 99% 가 아닐 경우
+            if int(request.form['discount_rate']) not in range(0, 99):
+                return jsonify({'message': 'DISCOUNT_RANGE_CAN_BE_SET_FROM_0_TO_99'}), 400
 
-                # 판매가는 10원 이하 일 경우
-                if int(request.form['price']) < 10:
-                    return jsonify({'message': 'CANNOT_SET_LESS_THAN_10'}), 400
+            # 상품 코드
+            product_code = str(uuid.uuid4())
 
-                # 할인률이 0 ~ 99% 가 아닐 경우
-                if int(request.form['discount_rate']) not in range(0, 99):
-                    return jsonify({'message': 'DISCOUNT_RANGE_CAN_BE_SET_FROM_0_TO_99'}), 400
+            # S3 이미지 저장
+            image_urls = list()
 
-                # 상품 입력을 위한 데이터를 받는다.
-                product_info = {
-                    'seller_id'           : request.form['seller_id'],
-                    'is_on_sale'          : request.form['is_on_sale'],
-                    'is_displayed'        : request.form['is_displayed'],
-                    'name'                : request.form['name'],
-                    'simple_description'  : request.form['simple_description'],
-                    'detail_description'  : request.form['detail_description'],
-                    'price'               : request.form['price'],
-                    'discount_rate'       : request.form['discount_rate'],
-                    'discount_price'      : request.form['discount_price'],
-                    'min_unit'            : request.form['min_unit'],
-                    'max_unit'            : request.form['max_unit'],
-                    'is_stock_managed'    : request.form['is_stock_managed'],
-                    'stock_number'        : request.form['stock_number'],
-                    'first_category_id'   : request.form['first_category_id'],
-                    'second_category_id'  : request.form['second_category_id'],
-                    'modifier_id'         : request.form['modifier_id'],
-                    'images'              : image_url,
-                    'discount_start_date' : request.form['discount_start_date'],
-                    'discount_end_date'   : request.form['discount_end_date'],
-                    'product_code'        : product_code
-                }
+            image = request.files.get('image_1', None)
+            if image and allowed_file(image.filename):
+                image_url = product_service.save_product_image(image, product_code)
+            else:
+                return jsonify({'message': 'INVALID_IMAGE'}), 400
 
-                product_service.insert_product(product_info, session)
+            # 상품 입력을 위한 데이터를 받는다.
+            product_info = {
+                'seller_id': request.form['seller_id'],
+                'is_on_sale': request.form['is_on_sale'],
+                'is_displayed': request.form['is_displayed'],
+                'name': request.form['name'],
+                'simple_description': request.form['simple_description'],
+                'detail_description': request.form['detail_description'],
+                'price': request.form['price'],
+                'is_definite' :request.form['is_definite'],
+                'discount_rate': request.form['discount_rate'],
+                'discount_price': request.form['discount_price'],
+                'min_unit': request.form['min_unit'],
+                'max_unit': request.form['max_unit'],
+                'is_stock_managed': request.form['is_stock_managed'],
+                'stock_number': request.form['stock_number'],
+                'first_category_id': request.form['first_category_id'],
+                'second_category_id': request.form['second_category_id'],
+                'modifier_id': request.form['modifier_id'],
+                'images': image_url,
+                'discount_start_date': request.form['discount_start_date'],
+                'discount_end_date': request.form['discount_end_date'],
+                'product_code': product_code
+            }
 
-                session.commit()
+            product_service.insert_product(product_info, session)
 
-                return jsonify({'message': 'SUCCESS'}), 200
+            session.commit()
+
+            return jsonify({'message': 'SUCCESS'}), 200
 
         except KeyError:
-            return jsonify({'message' : 'KEY_ERROR'}), 400
+            return jsonify({'message': 'KEY_ERROR'}), 400
+
+        except exc.IntegrityError:
+            return jsonify({'message': 'DUPLICATE_DATA'}), 400
+
+        except exc.InvalidRequestError:
+            return jsonify(({'message': 'INVALID_REQUEST'})), 400
+
+        except exc.ProgrammingError:
+            return jsonify(({'message': 'ERROR_IN_SQL_SYNTAX'})), 400
 
         except Exception as e:
             session.rollback()

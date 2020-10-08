@@ -1,3 +1,5 @@
+from flask import jsonify
+
 class ProductDao:
     def get_first_categories(self, seller_info, session):
         """ 1차 카테고리 데이터 전달
@@ -21,8 +23,8 @@ class ProductDao:
                 f_cat.first_category_name
             FROM main_categories AS m_cat 
             INNER JOIN first_categories AS f_cat ON m_cat.id = f_cat.main_category_id
-            INNER JOIN seller_attributes AS s_attr ON s_attr.id = :attribute_id               
-            WHERE s_attr.attribute_group_id = m_cat.id;
+            INNER JOIN seller_attributes AS s_attr ON s_attr.id = :attribute_id 
+            AND s_attr.attribute_group_id = m_cat.id;
             """
 
         row = session.execute(filter_query, {'attribute_id' : seller_info}).fetchall()
@@ -50,7 +52,7 @@ class ProductDao:
                 s_cat.id AS s_id,
                 s_cat.second_category_name
             FROM first_categories AS f_cat 
-            INNER JOIN second_categories AS s_cat ON s_cat.first_category_id = :f_cat_id   
+            INNER JOIN second_categories AS s_cat ON s_cat.first_category_id = :f_cat_id  
             WHERE f_cat.id = :f_cat_id        
             """
 
@@ -204,7 +206,6 @@ class ProductDao:
 
         # 셀러명 검색
         if product_info.get('mdName', None):
-            # 셀러명 검색어를 formatting 하여 LIKE 절에 사용
             name = product_info['mdName']
             product_info['mdName'] = f'%{name}%'
 
@@ -351,6 +352,7 @@ class ProductDao:
             price,
             discount_rate,
             discount_price,
+            is_definite,
             discount_start_date,
             discount_end_date,
             min_unit,
@@ -375,6 +377,7 @@ class ProductDao:
             :price,
             :discount_rate,
             :discount_price,
+            :is_definite,
             :discount_start_date,
             :discount_end_date,
             :min_unit,

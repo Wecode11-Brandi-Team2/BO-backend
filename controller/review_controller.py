@@ -36,6 +36,22 @@ def create_review_endpoints(services, Session):
         Param('offset', GET, int, required = False)
     )
     def get_review_list(*args, **kwargs):
+        """
+        Review list 반환해주는 함수
+
+        filtering 기능을 사용하기 위해 validate_params를 사용해 Querystring으로 원하는 형태의 값이 들어왔는지 validation 확인 후
+        해당 값을 필터링 해서 보내주는 함수
+
+        Args:
+            valid_param : validate_params에서 통과 한 QueryString.
+            session : db connection 객체
+        Returns:
+            get_review_result : 글 번호, 셀러명, 상품명, 회원닉네임, 리뷰내용, 등록일시, 수정일시 return (r'type : dict)
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-07 (hj885353@gmail.com) : 초기 생성
+        """
         valid_param = {}
 
         valid_param['selectValue']      = args[0] # 검색 입력값
@@ -72,5 +88,93 @@ def create_review_endpoints(services, Session):
             # db close
             session.close()
 
+    @review_bp.route('/<int:parameter_review_no>', methods = ['GET'], endpoint = 'review_info')
+    @login_required(Session)
+    @validate_params(
+        Param('parameter_review_no', PATH, int, required = True)
+    )
+    def review_info(*args, **kwargs):
+        """
+        리뷰 내용 보기 버튼 눌렀을 때, 모달창에 띄워지는 데이터를 반환해주는 함수
+
+        리뷰 버튼을 눌렀을 때, 해당 리뷰에 대한 내용을 보여주어야 하기 때문에 글 번호를 path_parameter로 받아,
+        해당 글에 대한 정보를 반환해주도록 합니다.
+
+        Args:
+            review_no : validate_params에서 통과 한 path_parameter.
+            session : db connection 객체
+        Returns:
+            review_info_result : 글 번호, 리뷰 내용 return (r'type : dict)
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-08 (hj885353@gmail.com) : 초기 생성
+        """
+        review_no = {
+            'parameter_review_no' : args[0] # 리뷰 글 번호
+        }
+
+        session = Session()
+
+        try:
+            # db connection 정상 연결 시
+            if session:
+                review_info_result = review_service.review_info(review_no, session)
+
+                return review_info_result
+            # db connection error
+            return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
+
+        except Exception as e:
+            return jsonify({'message' : f'{e}'})
+
+        finally:
+            session.close()
+
+    @review_bp.route('/<int:parameter_review_no>', methods = ['POST'], endpoint = 'delete_review')
+    @login_required(Session)
+    @validate_params(
+        Param('parameter_review_no', PATH, int, required = True)
+    )
+    def delete_review(*args, **kwargs):
+        """
+        리뷰 내용 삭제 API
+
+        리뷰 삭제 버튼을 눌렀을 때, 해당 글 번호를 path_parameter로 받아 해당 글을 soft delete 처리한다.
+
+        Args:
+            review_no : validate_params에서 통과 한 path_parameter.
+            session : db connection 객체
+        Returns:
+            SUCCESS, 200
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-08 (hj885353@gmail.com) : 초기 생성
+        """
+        review_no = {
+            'parameter_review_no' : args[0] # 리뷰 글 번호
+        }
+
+        session = Session()
+
+        try:
+            # db connection 정상 연결 시
+            if session:
+                review_service.delete_review(review_no, session)
+                # transaction commit
+                session.commit()
+                return jsonify({'message' : 'SUCCESS'}), 200
+
+            # db connection error
+            return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
+
+        except Exception as e:
+            # transaction rollback
+            session.rollback()
+            return jsonify({'message' : f'{e}'})
+
+        finally:
+            session.close()
 
     return review_bp

@@ -335,8 +335,7 @@ class ProductDao:
 
         # 이미지 리스트를 가져와 첫 번째 이미지를 대표이미지로 저장
         image_list = product_info['images']
-        # product_info['main_img'] = image_list[0]
-        product_info['main_img'] = image_list
+        product_info['main_img'] = image_list[0]
 
         insert_query = """
         INSERT INTO product_info
@@ -396,26 +395,26 @@ class ProductDao:
         row = session.execute(insert_query, product_info).lastrowid
 
         # 3. image 테이블 Insert
-        # for idx, image in enumerate(image_list):
-        image_info = {
-            'image_url' : image_list,
-            'product_info_id' : row,
-            'ordering' : 1
-        }
+        for idx, image in enumerate(image_list):
+            image_info = {
+                'image_url' : image,
+                'product_info_id' : row,
+                'ordering' : idx + 1
+            }
 
-        insert_query = """
-        INSERT INTO product_images
-        (   
-            URL,
-            product_info_id,
-            ordering,
-            created_at
-        ) VALUES (
-            :image_url,
-            :product_info_id,
-            :ordering,
-            now()
-        )
-        """
+            insert_query = """
+            INSERT INTO product_images
+            (   
+                URL,
+                product_info_id,
+                ordering,
+                created_at
+            ) VALUES (
+                :image_url,
+                :product_info_id,
+                :ordering,
+                now()
+            )
+            """
 
-        session.execute(insert_query, image_info)
+            session.execute(insert_query, image_info)

@@ -141,6 +141,39 @@ def create_product_endpoints(product_service, Session):
         finally:
             session.close()
 
+    @product_app.route('/history', methods=['GET'], endpoint='product_history')
+    @login_required(Session)
+    def product_history():
+        """ 상품 수정 이력 전달 API
+
+        점 이력으로 관리하는 상품의 수정 이력을 표출합니다.
+
+        args:
+            product_id : 상품의 id
+
+        returns :
+            200: 상품의 수정 이력 리스트
+            500: Exception
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-10 (고지원): 초기 생성
+        """
+        session = Session()
+        try:
+            product_id = request.args.get('product_id')
+            body = [dict(history) for history in product_service.get_product_history(product_id, session)]
+
+            return jsonify(body), 200
+
+        except Exception as e:
+            return jsonify({'message': f'{e}'}), 500
+
+        finally:
+            session.close()
+
     @product_app.route('/excel', methods=['GET'], endpoint='make_excel')
     @login_required(Session)
     def make_excel():
@@ -280,8 +313,11 @@ def create_product_endpoints(product_service, Session):
                 CANNOT_SET_MORE_THAN_20,
                 CANNOT_SET_LESS_THAN_10,
                 DISCOUNT_RANGE_CAN_BE_SET_FROM_0_TO_99,
-                DUPLICATE_DATA
-            500: Exception
+                DUPLICATE_DATA,
+                INVALID_REQUEST
+            500:
+                 Exception,
+                 ERROR_IN_SQL_SYNTAX
 
         Authors:
             고지원
@@ -289,6 +325,7 @@ def create_product_endpoints(product_service, Session):
         History:
             2020-10-03 (고지원): 초기 생성
             2020-10-04 (고지원): 상품 정보 입력 시 제한 사항 에러 추가
+            2020-10-10 (고지원): 여러 개의 이미지를 업로드 할 수 있도록 수정
         """
         session = Session()
         try:
@@ -327,8 +364,6 @@ def create_product_endpoints(product_service, Session):
                     allowed_file(image.filename)
                     image_url = product_service.save_product_image(image, product_code)
                     image_urls.append(image_url)
-
-            print(image_urls)
 
             # 상품 입력을 위한 데이터를 받는다.
             product_info = {

@@ -300,6 +300,45 @@ class ProductDao:
 
         return product_info
 
+    def get_product_history(self, product_id, session):
+        """ 상품 수정 이력 전달
+
+        args:
+            product_id: 상품 pk
+            session: 데이터베이스 session 객체
+
+        returns :
+            200: 상품 수정 이력 리스
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-10 (고지원): 초기 생성
+        """
+        product_info = session.execute(("""
+            SELECT 
+                p.id AS p_id, 
+                p_info.id AS p_info_id,
+                p_info.product_code AS p_code,
+                p_info.created_at,
+                p_info.price, 
+                p_info.is_on_sale,
+                p_info.is_displayed,
+                p_info.discount_rate, 
+                p_info.discount_price,
+                p_info.modifier_id
+            FROM products AS p 
+
+            # 상품 정보 조인 
+            INNER JOIN product_info AS p_info ON p_info.product_id = p.id
+            
+            WHERE p_info.product_id = :product_id
+            ORDER BY p_info.created_at DESC 
+        """), {'product_id': product_id}).fetchall()
+
+        return product_info
+
     def insert_product(self, product_info, session):
         """ 상품 데이터 등록
 

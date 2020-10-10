@@ -102,7 +102,22 @@ class ProductService:
             2020-10-03 (고지원): 초기 생성
         """
         product = self.product_dao.get_product(product_id, session)
+
         return product
+
+    def get_product_history(self, product_id, session):
+        """ 상품 수정 이력 전달
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-10 (고지원): 초기 생성
+        """
+
+        history = self.product_dao.get_product_history(product_id, session)
+
+        return history
 
     def make_excel(self, id_list, session):
         """ 상품 정보 엑셀 파일 다운로드

@@ -85,10 +85,10 @@ class ProductService:
         # 해킹으로부터 파일 이름 보호
         image_filename = secure_filename(image.filename)
 
-        s3_resource.put_object(Body = image, Bucket = 'brandi-images', Key = f'{product_code}{image_filename}', ContentType = 'image/jpeg')
+        s3_resource.put_object(Body = image, Bucket = 'brandi-images', Key = f'{product_code}_{image_filename}', ContentType = 'image/jpeg')
 
         # 데이터베이스에 저장할 이미지 url
-        image_url = f'https://brandi-images.s3.ap-northeast-2.amazonaws.com/{product_code}{image_filename}'
+        image_url = f'https://brandi-images.s3.ap-northeast-2.amazonaws.com/{product_code}_{image_filename}'
 
         return image_url
 

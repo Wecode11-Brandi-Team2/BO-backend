@@ -268,7 +268,7 @@ def create_product_endpoints(product_service, Session):
             session.close()
 
     @product_app.route('', methods=['POST'], endpoint='insert_product')
-    # @login_required(Session)
+    @login_required(Session)
     def insert_product():
         """ 상품 정보 등록 API
 
@@ -319,11 +319,16 @@ def create_product_endpoints(product_service, Session):
             # S3 이미지 저장
             image_urls = list()
 
-            image = request.files.get('image_1', None)
-            if image and allowed_file(image.filename):
-                image_url = product_service.save_product_image(image, product_code)
-            else:
-                return jsonify({'message': 'INVALID_IMAGE'}), 400
+            for idx in range(1, 6):
+                image = request.files.get(f'image_{idx}', None)
+
+                if image:
+                    # 허용된 확장자인지 확인 (png, jpg, jpeg)
+                    allowed_file(image.filename)
+                    image_url = product_service.save_product_image(image, product_code)
+                    image_urls.append(image_url)
+
+            print(image_urls)
 
             # 상품 입력을 위한 데이터를 받는다.
             product_info = {
@@ -344,7 +349,7 @@ def create_product_endpoints(product_service, Session):
                 'first_category_id': request.form['first_category_id'],
                 'second_category_id': request.form['second_category_id'],
                 'modifier_id': request.form['modifier_id'],
-                'images': image_url,
+                'images': image_urls,
                 'discount_start_date': request.form['discount_start_date'],
                 'discount_end_date': request.form['discount_end_date'],
                 'product_code': product_code
@@ -366,7 +371,7 @@ def create_product_endpoints(product_service, Session):
             return jsonify(({'message': 'INVALID_REQUEST'})), 400
 
         except exc.ProgrammingError:
-            return jsonify(({'message': 'ERROR_IN_SQL_SYNTAX'})), 400
+            return jsonify(({'message': 'ERROR_IN_SQL_SYNTAX'})), 500
 
         except Exception as e:
             session.rollback()

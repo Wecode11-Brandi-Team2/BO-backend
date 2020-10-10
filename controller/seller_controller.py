@@ -71,15 +71,15 @@ def create_seller_endpoints(services, Session):
             return jsonify({'MESSAGE' : 'DUPLICATED ID'}), 400
 
         # KeyError 발생 시의 예외처리
-        # except KeyError:
-        #     # error 발생 시 transaction rollback
-        #     session.rollback()
-        #     return jsonify({'MESSAGE' : 'KEY ERROR'}), 400
-        #
-        # except Exception as e:
-        #     # error 발생 시 transaction rollback
-        #     session.rollback()
-        #     return jsonify({'MESSAGE' : f'{e}'})
+        except KeyError:
+            # error 발생 시 transaction rollback
+            session.rollback()
+            return jsonify({'MESSAGE' : 'KEY ERROR'}), 400
+
+        except Exception as e:
+            # error 발생 시 transaction rollback
+            session.rollback()
+            return jsonify({'MESSAGE' : f'{e}'})
 
         finally:
             # transaction close

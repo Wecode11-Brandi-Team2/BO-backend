@@ -1,4 +1,5 @@
 from config import get_s3_resource
+from werkzeug.utils import secure_filename
 
 class ProductService:
     def __init__(self, product_dao):
@@ -75,14 +76,19 @@ class ProductService:
 
         History:
             2020-10-05 (고지원): 초기 생성
+            2020-10-09 (고지원): 이미지 url 상품 코드와 파일의 이름 조합으로 수정
         """
 
         # s3 서버 연결 및 이미지 업로드
         s3_resource = get_s3_resource()
-        s3_resource.put_object(Body = image, Bucket = 'brandi-images', Key = f'{product_code}.jpeg', ContentType = 'image/jpeg')
+
+        # 해킹으로부터 파일 이름 보호
+        image_filename = secure_filename(image.filename)
+
+        s3_resource.put_object(Body = image, Bucket = 'brandi-images', Key = f'{product_code}{image_filename}', ContentType = 'image/jpeg')
 
         # 데이터베이스에 저장할 이미지 url
-        image_url = f'https://brandi-images.s3.ap-northeast-2.amazonaws.com/{product_code}.jpeg'
+        image_url = f'https://brandi-images.s3.ap-northeast-2.amazonaws.com/{product_code}{image_filename}'
 
         return image_url
 

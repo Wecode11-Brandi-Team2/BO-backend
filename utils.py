@@ -11,7 +11,7 @@ def login_required(Session):
             if access_token:
                 try:
                     payload = jwt.decode(access_token, SECRET['SECRET_KEY'], algorithm = SECRET['ALGORITHMS'])
-                    seller_no = payload['seller_info']
+                    seller_no = payload['seller_no']
 
                     if session:
                         get_seller_info_stmt = ("""
@@ -45,3 +45,9 @@ def login_required(Session):
             return jsonify({'message': 'INVALID_TOKEN'}), 401
         return wrapper
     return inner_function
+
+# 이미지 파일 업로드 가능한 확장자
+ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg'])
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS

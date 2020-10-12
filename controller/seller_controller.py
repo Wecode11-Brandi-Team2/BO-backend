@@ -156,7 +156,9 @@ def create_seller_endpoints(services, Session):
         Param('start_at', GET, str, required = False),
         Param('end_date', GET, str, required = False),
         Param('offset', GET, int, required = False),
-        Param('limit', GET, int, required = False)
+        Param('limit', GET, int, required = False),
+        Param('filterLimit', GET, int, required = False),
+        Param('page', GET, int, required = False)
     )
     def get_seller_list(*args, **kwargs):
         """ 가입된 모든 셀러 정보 리스트 표출
@@ -197,8 +199,10 @@ def create_seller_endpoints(services, Session):
         valid_param['action']           = args[12]
         valid_param['start_at']         = start_at
         valid_param['end_date']         = end_date
-        valid_param['limit']            = args[15] if args[15] else 10
-        valid_param['offset']           = args[16] if args[16] else 0
+        # valid_param['limit']            = args[15] if args[15] else 10
+        # valid_param['offset']           = args[16] if args[16] else 0
+        valid_param['filterLimit']      = args[17]
+        valid_param['page']             = args[18]
 
         # 유저 정보를 g에서 읽어와서 service 에 전달
         seller_info = g.seller_info
@@ -210,8 +214,8 @@ def create_seller_endpoints(services, Session):
             if session:
                 seller_list_result = seller_service.get_seller_list(valid_param, seller_info, session)
                 # tuple unpacking
-                seller_list, seller_count = seller_list_result
-                return jsonify({'seller_list' : seller_list, 'seller_count' : seller_count})
+                seller_list, seller_count, page_number = seller_list_result
+                return jsonify({'sellers' : seller_list, 'total_seller_number' : seller_count, 'page_number' : page_number})
             else:
                 return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
 

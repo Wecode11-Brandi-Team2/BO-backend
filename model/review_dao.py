@@ -1,3 +1,4 @@
+import math
 from flask           import jsonify
 
 class ReviewDao:
@@ -19,6 +20,9 @@ class ReviewDao:
             hj885353@gmail.com (김해준)
         History:
             2020-10-07 (hj885353@gmail.com) : 초기 생성
+            2020-10-12 (hj885353@gmail.com) : Pagination 로직 변경
+             - SQL LIMIT, OFFSET 사용하여 10개씩 보기 등의 로직 가능하도록 구현
+             - 마지막 페이지 number return 하도록 변경
         """
         # 리뷰에 필요한 데이터를 조회하는 쿼리문
         select_review_statement = """
@@ -94,41 +98,24 @@ class ReviewDao:
             select_review_statement += " ORDER BY updated_at DESC"
             filter_query_values_count_statement += " ORDER BY updated_at DESC"
 
-        select_review_statement += " ORDER BY r.id DESC LIMIT :limit OFFSET :offset"
-
-        # 10개씩 보기, 20개씩 보기
+        # pagination 및 내림차순 정렬
         if valid_param.get('filterLimit', None):
-            select_review_statement += " Limit = :filterLimit"
-            filter_query_values_count_statement += " Limit = :filterLimit"
+            if valid_param.get('page', None):
+                valid_param['offset'] = valid_param['page'] * valid_param['filterLimit']
+                select_review_statement += " LIMIT :filterLimit OFFSET :offset"
+            else:
+                select_review_statement += " LIMIT :filterLimit"
 
         # 리뷰 전체 가져와서 dict 형태로 casting
         review_lists = session.execute(select_review_statement, valid_param).fetchall()
         review_list = [ dict(review) for review in review_lists ]
 
-        # 전체 리뷰의 갯수를 가져오는 쿼리문
-        review_count_statement = """
-            SELECT 
-                COUNT(0) as total_review_count
-            FROM reviews as r
-            LEFT JOIN order_item_info as oii ON r.order_item_info_id = oii.id
-            LEFT JOIN products as p ON oii.product_id = p.id
-            LEFT JOIN product_info as pi ON p.id = pi.product_id
-            LEFT JOIN users as u ON r.user_id = u.id
-            LEFT JOIN seller_info as si ON pi.seller_id = si.seller_id
-            WHERE si.is_deleted = 0
-            AND p.is_deleted = 0
-            AND pi.is_deleted = 0
-            AND u.is_deleted = 0
-        """
-        review_count = dict(session.execute(review_count_statement).fetchone())
-
         # 필터링 된 count를 fetch 및 dictionary로 casting
-        filter_query_values_count = dict(session.execute(filter_query_values_count_statement, valid_param).fetchone())
+        review_count = int(session.execute(filter_query_values_count_statement, valid_param).fetchone()[0])
 
-        # fetch해서 가져온 값을 dictionary에 add
-        review_count['filtered_review_count'] = filter_query_values_count['filtered_review_count']
-        
-        return review_list, review_count
+        page_number = math.ceil(review_count / valid_param['filterLimit'])
+
+        return review_list, review_count, page_number
 
     def review_info(self, review_no, session):
         """

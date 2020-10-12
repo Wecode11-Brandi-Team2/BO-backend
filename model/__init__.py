@@ -4,6 +4,7 @@ from .seller_dao import SellerDao
 from .product_dao import ProductDao
 from .qna_dao import QnADao
 from .review_dao import ReviewDao
+from .coupon_dao import CouponDao
 
 __all__ = [
     'OrderDao',
@@ -11,5 +12,6 @@ __all__ = [
     'SellerDao',
     'ProductDao',
     'QnADao',
-    'ReviewDao'
+    'ReviewDao',
+    'CouponDao'
 ]

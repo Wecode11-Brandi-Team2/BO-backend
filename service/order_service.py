@@ -1,4 +1,3 @@
-from custom_error.service_error import ServiceError
 import datetime
 
 
@@ -26,7 +25,7 @@ class OrderService:
             2020-09-24 (이용민) : 주문상태 분류 로직 추가
             2020-09-28 (이용민) : 주문상태 통합 로직으로 변경
         """
-        # return self.order_dao.select_orders(select_condition, session)
+        total_order_number = self.order_dao.select_orders_count(select_condition, session)
         order_list = self.order_dao.select_orders(select_condition, session)
 
         result_order_list = []
@@ -37,11 +36,27 @@ class OrderService:
             dict_order['option_info'] = f"{dict_order['option_color']} / {dict_order['option_size']}"
 
             # datetime 객체를 '연-월-일 시간:분:초' 형태로 변환
-            dict_order['payment_date'] = dict_order['payment_date'].strftime(
-                '%Y-%m-%d %H:%M:%S')
+            if dict_order.get('payment_date', None):
+                dict_order['payment_date'] = dict_order['payment_date'].strftime('%Y-%m-%d %H:%M:%S')
+
+            if dict_order.get('shipping_start_date', None):
+                dict_order['shipping_start_date'] = dict_order['shipping_start_date'].strftime('%Y-%m-%d %H:%M:%S')
+
+            if dict_order.get('shipping_complete_date', None):
+                dict_order['shipping_complete_date'] = dict_order['shipping_complete_date'].strftime('%Y-%m-%d %H:%M:%S')
+
+            if dict_order.get('refund_request_date', None):
+                dict_order['refund_request_date'] = dict_order['refund_request_date'].strftime('%Y-%m-%d %H:%M:%S')
+
+            if dict_order.get('refund_complete_date', None):
+                dict_order['refund_complete_date'] = dict_order['refund_complete_date'].strftime('%Y-%m-%d %H:%M:%S')
+
+            if dict_order.get('complete_cancellation_date', None):
+                dict_order['complete_cancellation_date'] = dict_order['complete_cancellation_date'].strftime('%Y-%m-%d %H:%M:%S')
+
             result_order_list.append(dict_order)
 
-        return result_order_list
+        return total_order_number, result_order_list
 
     def get_order_detail_info(self, order_item_id, session):
         """

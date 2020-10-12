@@ -11,7 +11,8 @@ from model          import (
     SellerDao,
     ProductDao,
     QnADao,
-    ReviewDao
+    ReviewDao,
+    CouponDao
 )
 from service        import (
     OrderService,
@@ -19,7 +20,8 @@ from service        import (
     SellerService,
     ProductService,
     QnAService,
-    ReviewService
+    ReviewService,
+    CouponService
 )
 from controller     import (
     create_order_endpoints,
@@ -27,7 +29,8 @@ from controller     import (
     create_seller_endpoints,
     create_product_endpoints,
     create_qna_endpoints,
-    create_review_endpoints
+    create_review_endpoints,
+    create_coupon_endpoints
 )
 
 import utils
@@ -56,6 +59,7 @@ def create_app(test_config = None):
     product_dao = ProductDao()
     qna_dao = QnADao()
     review_dao = ReviewDao()
+    coupon_dao = CouponDao()
 
     # Business layer
     order_service = OrderService(order_dao)
@@ -64,6 +68,7 @@ def create_app(test_config = None):
     product_service = ProductService(product_dao)
     qna_service = QnAService(qna_dao)
     review_service = ReviewService(review_dao)
+    coupon_service = CouponService(coupon_dao)
 
     # Presentation layer
     app.register_blueprint(create_order_endpoints(order_service, Session))
@@ -72,5 +77,6 @@ def create_app(test_config = None):
     app.register_blueprint(create_product_endpoints(product_service, Session))
     app.register_blueprint(create_qna_endpoints(qna_service, Session))
     app.register_blueprint(create_review_endpoints(review_service, Session))
+    app.register_blueprint(create_coupon_endpoints(coupon_service, Session))
 
     return app

@@ -21,15 +21,15 @@ def create_qna_endpoints(services, Session):
     @qna_bp.route('/', methods = ['GET'], endpoint = 'get_qna_list')
     @login_required(Session)
     @validate_params(
-        Param('product_name', GET, str, required = False),
-        Param('product_inqry_no', GET, int, required = False),
-        Param('md_ko_name', GET, str, required = False),
-        Param('order_no', GET, int, required = False),
-        Param('inquiry_type', GET, str, required = False),
-        Param('regist_date_from', GET, str, required = False),
-        Param('regist_date_to', GET, str, required = False),
-        Param('offset', GET, int, required = False),
-        Param('limit', GET, int, required = False)
+        Param('PRODUCT_NAME', GET, str, required = False),
+        Param('PRDUCT_INQRY_NO', GET, int, required = False),
+        Param('MD_KO_NAME', GET, str, required = False),
+        Param('ORDER_NO', GET, int, required = False),
+        Param('inquiryType', GET, str, required = False),
+        Param('filterDateFrom', GET, str, required = False),
+        Param('filterDateTo', GET, str, required = False),
+        Param('filterLimit', GET, int, required = False),
+        Param('page', GET, int, required = False)
     )
     def get_qna_list(*args, **kwargs):
         """
@@ -37,15 +37,15 @@ def create_qna_endpoints(services, Session):
         valildate_params를 통과한 QueryString을 인자로 받는다.
 
         Args:
-            product_name : 상품명
-            product_inqry_no : 글 번호
-            md_ko_name : 셀러 한글명
-            order_no : 회원번호
-            inquiry_type : 문의 유형
-            regist_date_from : 등록일 ~부터
-            regist_date_to : 등록일 ~까지
-            offset : pagination offset
-            limit : pagination limit
+            PRODUCT_NAME : 상품명
+            PRDUCT_INQRY_NO : 글 번호
+            MD_KO_NAME : 셀러 한글명
+            ORDER_NO : 회원번호
+            inquiryType : 문의 유형
+            filterDateFrom : 등록일 ~부터
+            filterDateTo : 등록일 ~까지
+            filterLimit : pagination offset
+            page : page number
         Returns:
             qna_list : 조건을 충족하는 Q&A 목록 (r'type : dict)
             qna_count : 전체 갯수와 조건을 만족하는 Q&A 갯수 (r'type : dict)
@@ -54,18 +54,19 @@ def create_qna_endpoints(services, Session):
             hj885353@gmail.com (김해준)
         History:
             2020-10-05 (hj885353@gmail.com) : 초기 생성
+            2020-10-12 (hj885353@gmail.com) : QueryString 변경
         """
         valid_param = {}
 
-        valid_param['product_name']     = args[0] # 상품명
-        valid_param['product_inqry_no'] = args[1] # 글 번호
-        valid_param['md_ko_name']       = args[2] # 셀러 한글명
-        valid_param['order_no']         = args[3] # 회원 번호
-        valid_param['inquiry_type']     = args[4] # 문의 유형
-        valid_param['regist_date_from'] = args[5] # 등록일 ~부터
-        valid_param['regist_date_to']   = args[6] # 등록일 ~까지
-        valid_param['limit']            = args[8] if args[8] else 20 # pagination limit
-        valid_param['offset']           = args[7] if args[7] else 0 # pagination offset
+        valid_param['PRODUCT_NAME']    = args[0] # 상품명
+        valid_param['PRDUCT_INQRY_NO'] = args[1] # 글 번호
+        valid_param['MD_KO_NAME']      = args[2] # 셀러 한글명
+        valid_param['ORDER_NO']        = args[3] # 회원 번호
+        valid_param['inquiryType']     = args[4] # 문의 유형
+        valid_param['filterDateFrom']  = args[5] # 등록일 ~부터
+        valid_param['filterDateTo']    = args[6] # 등록일 ~까지
+        valid_param['filterLimit']     = args[7] # pagination limit
+        valid_param['page']            = args[8] # page number
 
         # decorator로부터 받아온 seller info를 가진 g 객체
         seller_info = g.seller_info
@@ -77,8 +78,8 @@ def create_qna_endpoints(services, Session):
                 # dao와 service를 거친 결과 목록 반환
                 qna_list_result = qna_service.get_qna_list(valid_param, seller_info, session)
                 # tuple -> list로 casting
-                qna_list, qna_count = qna_list_result
-                return jsonify({'qna_list' : qna_list, 'qna_count' : qna_count})
+                qna_list, qna_count, page_number = qna_list_result
+                return jsonify({'qna' : qna_list, 'total_qna_number' : qna_count, 'page_number' : page_number})
             else:
                 # db connection error
                 return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500

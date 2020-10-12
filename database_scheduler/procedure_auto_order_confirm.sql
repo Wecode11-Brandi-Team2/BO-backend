@@ -5,9 +5,6 @@ CREATE PROCEDURE AUTO_ORDER_CONFIRM( OUT RESULT INT)
 AUTO_ORDER_CONFIRM 프로시저
 	order_item_info 테이블에 배송완료상태 주문을 이력 종료시키고, 구매확정상태 주문을 새로 생성한다.
 
-return 
-	RESULT : 실패(-1), 성공 (0)
-
 Authors:
     eymin1259@gmail.com 이용민
 
@@ -15,6 +12,11 @@ History:
     2020-10-05 (이용민) : 초기 생성
 */
 BEGIN
+
+    /* 오토커밋 ON, 트랜잭션 설정 */
+    SET AUTOCOMMIT = 1;
+    START TRANSACTION;
+
 	/* 커서 종료 구분 변수 */
 	DECLARE _done INT DEFAULT FALSE;
 	/* 처리된 건수 */
@@ -56,7 +58,11 @@ BEGIN
     DECLARE _oii_is_deleted TINYINT;
 
 	/* order_item_info 테이블에서 배송완료일(order_status_id = 4)이 3일이상 지난 row들을 읽어오는 커서를 생성. */
-	DECLARE CURSOR_ORDER_ITEM_INFO CURSOR FOR SELECT * FROM order_item_info WHERE order_status_id = 4 AND shipping_complete_date <= DATE_SUB(now(), interval 3 day);
+	DECLARE CURSOR_ORDER_ITEM_INFO CURSOR FOR 
+    SELECT * 
+    FROM order_item_info 
+    WHERE order_status_id = 4 
+    AND shipping_complete_date <= DATE_SUB(now(), interval 3 day);
 
 	/* 커서 종료조건 : 더이상 없다면 종료 */
 	DECLARE CONTINUE HANDLER FOR NOT FOUND SET _done = TRUE;
@@ -84,6 +90,7 @@ BEGIN
 
 	/* 커서를 닫기 */
 	CLOSE CURSOR_ORDER_ITEM_INFO;
-	SET RESULT = _row_count;	 
+	SET RESULT = _row_count;
+    	 
 END$$
 DELIMITER ;

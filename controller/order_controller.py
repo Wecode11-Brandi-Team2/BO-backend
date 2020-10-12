@@ -1,3 +1,5 @@
+import math
+
 from flask import (
     Blueprint,
     request,
@@ -22,7 +24,7 @@ def create_order_endpoints(order_service, Session):
         Param('orderStatus',            GET, int, required=True),   # 주문상태
         Param('selectFilter',           GET, str, required=False),  # 검색 키워드 주제
         Param('filterKeyword',          GET, str, required=False),  # 검색 키워드
-        Param('filterOrder',            GET, str, required=False),  # 정렬기준 : 주문일순 or 주문일역순
+        Param('filterOrder',            GET, str, required=True),   # 정렬기준 : 주문일순 or 주문일역순
         Param('filterLimit',            GET, int, required=False),  # 참조하는 최대 주문정보 갯수
         Param('filterDateFrom',         GET, str, required=False),  # 주문시간 구간조건
         Param('filterDateTo',           GET, str, required=False),  # 주문시간 구간조건
@@ -45,7 +47,6 @@ def create_order_endpoints(order_service, Session):
 
         returns :
             200: 결제완료주문 리스트
-            500: DB_CONNECTION_TIMEOUT, ERROR, SERVICEERROR
 
         Authors:
             eymin1259@gmail.com 이용민
@@ -54,35 +55,40 @@ def create_order_endpoints(order_service, Session):
             2020-09-22 (이용민) : 초기 생성
             2020-09-24 (이용민) : 결제완료/상품준비중/배송중/배송완료상태 엔드포인트 통합
             2020-09-28 (이용민) : 결제완료/상품준비중/배송중/배송완료환불요청/환불완료/주문취소완료 엔드포인트 통합
+            2020-10-07 (이용민) : 페이지네이션 로직 변경
         """
 
         # 세션 인스턴스 생성 : connection open, transaction begin
-        session = Session()
         
+        session = Session()
         try:
+            
             select_condition = {
-                'orderStatus'           : args[0], # 주문상태
+                'orderStatus'           : args[0],  # 주문상태
                 'selectFilter'          : None if args[1] == '' else args[1], # 검색 키워드 주제
                 'filterKeyword'         : None if args[2] == '' else args[2], # 검색 키워드
                 'filterOrder'           : None if args[3] == '' else args[3], # 정렬기준 : 주문일순 or 주문일역순
-                'filterLimit'           : args[4], # 참조하는 최대 주문정보 갯수
+                'filterLimit'           : args[4],  # 참조하는 최대 주문정보 갯수
                 'filterDateFrom'        : None if args[5] == '' else args[5], # 주문시간 구간조건
                 'filterDateTo'          : None if args[6] == '' else args[6], # 주문시간 구간조건
-                'filterDeliveryNumber'  : args[7], # 운송장번호
-                'filterRefndReason'     : args[8], # 주문환불이유
-                'filterCancelReason'    : args[9], # 주문취소이유
+                'filterDeliveryNumber'  : args[7],  # 운송장번호
+                'filterRefndReason'     : args[8],  # 주문환불이유
+                'filterCancelReason'    : args[9],  # 주문취소이유
                 'page'                  : args[10], # 페이지네이션
                 'mdSeNo'                : args[11]  # 셀러속성
             }
 
             # 비즈니스 로직 호출
-            payment_complete_orders = order_service.get_order_list(select_condition, session)
+            total_order_number, result_order_list = order_service.get_order_list(select_condition, session)
+      
+            response = {
+                # 페이지네이션 구현
+                'orders': result_order_list,
+                'total_order_number' : total_order_number,
+                'page_number' : math.ceil(total_order_number/select_condition['filterLimit'])
+            }
 
-            return jsonify({'orders': [ dict(order) for order in payment_complete_orders]}), 200
-
-        except TimeoutError:
-            # DB connection timeout error
-            return jsonify({'ERROR_MSG': 'DB_CONNECTION_TIMEOUT'}), 500
+            return jsonify(response), 200
 
         except Exception as e:
             # global error handling
@@ -108,7 +114,6 @@ def create_order_endpoints(order_service, Session):
 
         returns :
             200: 주문상세정보
-            500: DB_CONNECTION_TIMEOUT, ERROR
 
         Authors:
             eymin1259@gmail.com 이용민
@@ -133,10 +138,6 @@ def create_order_endpoints(order_service, Session):
 
             return jsonify(response), 200
                 
-        except TimeoutError:
-            # DB connection timeout error
-            return jsonify({'ERROR_MSG': 'DB_CONNECTION_TIMEOUT'}), 500
-
         except Exception as e:
             # global error handling
             session.rollback()
@@ -171,7 +172,6 @@ def create_order_endpoints(order_service, Session):
 
         returns :
             200: 주문상세정보 수정 성공 메세지
-            500: DB_CONNECTION_TIMEOUT, ERROR
 
         Authors:
             eymin1259@gmail.com 이용민
@@ -204,10 +204,6 @@ def create_order_endpoints(order_service, Session):
 
             return jsonify({'MESSAGE': 'UPDATE_SUCCESS' }), 200
 
-        except TimeoutError:
-            # DB connection timeout error
-            return jsonify({'ERROR_MSG': 'DB_CONNECTION_TIMEOUT'}), 500
-
         except Exception as e:
             # global error handling
             session.rollback()
@@ -235,7 +231,6 @@ def create_order_endpoints(order_service, Session):
 
         returns :
             200: 주문상태변경 성공메세지
-            500: DB_CONNECTION_TIMEOUT, ERROR
 
         Authors:
             eymin1259@gmail.com 이용민
@@ -266,10 +261,6 @@ def create_order_endpoints(order_service, Session):
             session.commit()
 
             return jsonify({'MESSAGE': 'CHANGE_ORDER_STATUS_SUCCESS' }), 200
-            
-        except TimeoutError:
-            # DB connection timeout error
-            return jsonify({'ERROR_MSG': 'DB_CONNECTION_TIMEOUT'}), 500
 
         except Exception as e:
             # global error handling
@@ -297,7 +288,6 @@ def create_order_endpoints(order_service, Session):
 
         returns :
             200: 주문취소처리 성공메세지
-            500: DB_CONNECTION_TIMEOUT, ERROR
 
         Authors:
             eymin1259@gmail.com 이용민
@@ -333,10 +323,6 @@ def create_order_endpoints(order_service, Session):
 
             return jsonify({'MESSAGE': 'CANCEL_ORDER_SUCCESS' }), 200
 
-        except TimeoutError:
-            # DB connection timeout error
-            return jsonify({'ERROR_MSG': 'DB_CONNECTION_TIMEOUT'}), 500
-
         except Exception as e:
             # global error handling
             session.rollback()
@@ -366,7 +352,6 @@ def create_order_endpoints(order_service, Session):
 
         returns :
             200: 환불요청 성공메세지
-            500: DB_CONNECTION_TIMEOUT, ERROR
 
         Authors:
             eymin1259@gmail.com 이용민
@@ -389,7 +374,7 @@ def create_order_endpoints(order_service, Session):
             # 환불요청정보를 주문별로 재그룹화
             for count in range(0, refund_request_num):
                 refund_request_list.append({
-                  'order_item_id'       : args[0][count],   # 주문 상세 번호
+                  'order_item_id'        : args[0][count],   # 주문 상세 번호
                   'refund_reason_id'     : args[1][count],  # 주문 환불 이유
                   'refund_detail_reason' : args[2][count],  # 상세 환불 이유
                   'refund_amount'        : args[3][count],  # 환불금액 
@@ -402,10 +387,6 @@ def create_order_endpoints(order_service, Session):
             session.commit()
 
             return jsonify({'MESSAGE': 'REFUND_REQUEST_SUCCESS' }), 200
-
-        except TimeoutError:
-            # DB connection timeout error
-            return jsonify({'ERROR_MSG': 'DB_CONNECTION_TIMEOUT'}), 500
 
         except Exception as e:
             # global error handling
@@ -433,7 +414,6 @@ def create_order_endpoints(order_service, Session):
 
         returns :
             200: 환불완료 성공메세지
-            500: DB_CONNECTION_TIMEOUT, ERROR
 
         Authors:
             eymin1259@gmail.com 이용민
@@ -467,10 +447,6 @@ def create_order_endpoints(order_service, Session):
 
             return jsonify({'MESSAGE': 'REFUND_REQUEST_COMPLETE_SUCCESS' }), 200
 
-        except TimeoutError:
-            # DB connection timeout error
-            return jsonify({'ERROR_MSG': 'DB_CONNECTION_TIMEOUT'}), 500
-
         except Exception as e:
             # global error handling
             session.rollback()
@@ -498,7 +474,6 @@ def create_order_endpoints(order_service, Session):
 
         returns :
             200: 환불요청취소 성공메세지
-            500: DB_CONNECTION_TIMEOUT, ERROR
 
         Authors:
             eymin1259@gmail.com 이용민
@@ -530,10 +505,6 @@ def create_order_endpoints(order_service, Session):
 
             return jsonify({'MESSAGE': 'CANCEL_REFUND_REQUEST_SUCCESS' }), 200
             
-        except TimeoutError:
-            # DB connection timeout error
-            return jsonify({'ERROR_MSG': 'DB_CONNECTION_TIMEOUT'}), 500
-
         except Exception as e:
             # global error handling
             session.rollback()

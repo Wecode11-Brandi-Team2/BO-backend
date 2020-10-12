@@ -392,7 +392,7 @@ def create_product_endpoints(product_service, Session):
 
         except Exception as e:
             session.rollback()
-
+            
             return jsonify({'message': f'{e}'}), 500
 
         finally:

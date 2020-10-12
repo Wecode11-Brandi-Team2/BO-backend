@@ -1,3 +1,4 @@
+import math
 from flask           import jsonify
 from sqlalchemy import text
 
@@ -18,6 +19,7 @@ class QnADao:
             hj885353@gmail.com (김해준)
         History:
             2020-10-05 (hj885353@gmail.com) : 초기 생성
+            2020-10-12 (hj885353@gmail.com) : QueryString 및 INNER -> LEFT JOIN 변경
         """
         # db로부터 Q&A 목록 반환해주는데 필요한 field를 조회하는 쿼리문
         get_qna_list_statement = """
@@ -31,111 +33,90 @@ class QnADao:
                 q.content,
                 u.id as user_id
             FROM questions as q
-            INNER JOIN question_types as qt ON qt.id = q.type_id
-            INNER JOIN answers as a
-            INNER JOIN users as u ON q.user_id = u.id
-            INNER JOIN products as p ON p.id = q.product_id
-            INNER JOIN product_info as pi ON p.id = pi.product_id
-            INNER JOIN sellers as s ON s.id = a.replier_id
-            INNER JOIN seller_info as si ON s.id = si.seller_id
+            LEFT JOIN question_types as qt ON qt.id = q.type_id
+            LEFT JOIN answers as a ON a.id = q.id
+            LEFT JOIN products as p ON q.product_id = p.id
+            LEFT JOIN product_info as pi ON p.id = pi.product_id
+            LEFT JOIN users as u ON q.user_id = u.id
+            LEFT JOIN seller_info as si ON pi.seller_id = si.seller_id
             WHERE q.is_deleted = 0
             AND a.is_deleted = 0
             AND u.is_deleted = 0
             AND p.is_deleted = 0
             AND pi.is_deleted = 0
-            AND s.is_deleted = 0
         """
+
         # QueryString으로 필터링 했을 때, 해당 필터링 된 Q&A의 갯수를 count하는 쿼리문
         filter_query_values_count_statement = """
             SELECT 
                 COUNT(0) as filtered_qna_count
             FROM questions as q
-            INNER JOIN question_types as qt ON qt.id = q.type_id
-            INNER JOIN answers as a
-            INNER JOIN users as u ON q.user_id = u.id
-            INNER JOIN products as p ON p.id = q.product_id
-            INNER JOIN product_info as pi ON p.id = pi.product_id
-            INNER JOIN sellers as s ON s.id = a.replier_id
-            INNER JOIN seller_info as si ON s.id = si.seller_id
+            LEFT JOIN question_types as qt ON qt.id = q.type_id
+            LEFT JOIN answers as a ON a.id = q.id
+            LEFT JOIN products as p ON q.product_id = p.id
+            LEFT JOIN product_info as pi ON p.id = pi.product_id
+            LEFT JOIN users as u ON q.user_id = u.id
+            LEFT JOIN seller_info as si ON pi.seller_id = si.seller_id
             WHERE q.is_deleted = 0
             AND a.is_deleted = 0
             AND u.is_deleted = 0
             AND p.is_deleted = 0
             AND pi.is_deleted = 0
-            AND s.is_deleted = 0
         """
         # 상품명
-        if valid_param.get('product_name', None):
-            get_qna_list_statement += " AND pi.name = :product_name"
-            filter_query_values_count_statement += " AND pi.name = :product_name"
+        if valid_param.get('PRODUCT_NAME', None):
+            get_qna_list_statement += " AND pi.name = :PRODUCT_NAME"
+            filter_query_values_count_statement += " AND pi.name = :PRODUCT_NAME"
 
         # 글번호
-        if valid_param.get('product_inqry_no', None):
-            get_qna_list_statement += " AND q.id = :product_inqry_no"
-            filter_query_values_count_statement += " AND q.id = :product_inqry_no"
+        if valid_param.get('PRDUCT_INQRY_NO', None):
+            get_qna_list_statement += " AND q.id = :PRDUCT_INQRY_NO"
+            filter_query_values_count_statement += " AND q.id = :PRDUCT_INQRY_NO"
 
         # 셀러 한글명
-        if valid_param.get('md_ko_name', None):
-            get_qna_list_statement += " AND si.korean_name = :md_ko_name"
-            filter_query_values_count_statement += " AND si.korean_name = :md_ko_name"
+        if valid_param.get('MD_KO_NAME', None):
+            get_qna_list_statement += " AND si.korean_name = :MD_KO_NAME"
+            filter_query_values_count_statement += " AND si.korean_name = :MD_KO_NAME"
 
         # 회원 번호
-        if valid_param.get('order_no', None):
-            get_qna_list_statement += " AND s.id = :order_no"
-            filter_query_values_count_statement += " AND s.id = :order_no"
+        if valid_param.get('ORDER_NO', None):
+            get_qna_list_statement += " AND s.id = :ORDER_NO"
+            filter_query_values_count_statement += " AND s.id = :ORDER_NO"
         
         # 문의 유형
-        if valid_param.get('inquiry_type', None):
-            get_qna_list_statement += " AND qt.type_name = :inquiry_type"
-            filter_query_values_count_statement += " AND qt.type_name = :inquiry_type"
+        if valid_param.get('inquiryType', None):
+            get_qna_list_statement += " AND qt.type_name = :inquiryType"
+            filter_query_values_count_statement += " AND qt.type_name = :inquiryType"
 
         # 등록일 ~부터
-        if valid_param.get('regist_date_from', None):
-            get_qna_list_statement += " AND DATE(q.created_at) >= :regist_date_from"
-            filter_query_values_count_statement += " AND DATE(q.created_at) >= :regist_date_from"
+        if valid_param.get('filterDateFrom', None):
+            get_qna_list_statement += " AND DATE(q.created_at) >= :filterDateFrom"
+            filter_query_values_count_statement += " AND DATE(q.created_at) >= :filterDateFrom"
 
         # 등록일 ~까지
-        if valid_param.get('regist_date_from', None) and valid_param.get('regist_date_to', None):
-            get_qna_list_statement += " AND DATE(q.created_at) BETWEEN :regist_date_from AND :regist_date_to"
-            filter_query_values_count_statement += " AND DATE(q.created_at) BETWEEN :regist_date_from AND :regist_date_to"
+        if valid_param.get('filterDateFrom', None) and valid_param.get('filterDateTo', None):
+            get_qna_list_statement += " AND DATE(q.created_at) BETWEEN :filterDateFrom AND :filterDateTo"
+            filter_query_values_count_statement += " AND DATE(q.created_at) BETWEEN :filterDateFrom AND :filterDateTo"
 
         # pagination 및 내림차순 정렬
-        get_qna_list_statement += " ORDER BY q.id DESC LIMIT :limit OFFSET :offset"
+        if valid_param.get('filterLimit', None):
+            if valid_param.get('page', None):
+                valid_param['offset'] = valid_param['page'] * valid_param['filterLimit']
+                get_qna_list_statement += " LIMIT :filterLimit OFFSET :offset"
+            else:
+                get_qna_list_statement += " LIMIT :filterLimit"
+
         # Q&A 전체 목록을 다 가져옴
         qna_lists = session.execute(get_qna_list_statement, valid_param).fetchall()
         # dict 형태로 변환
         qna_list = [ dict(qna) for qna in qna_lists ]
 
-        # 전체 Q&A 갯수 count하는 쿼리문
-        qna_count_statement = """
-            SELECT
-                COUNT(q.id) as total_qna_count
-            FROM questions as q
-            INNER JOIN question_types as qt ON qt.id = q.type_id
-            INNER JOIN answers as a
-            INNER JOIN users as u ON q.user_id = u.id
-            INNER JOIN products as p ON p.id = q.product_id
-            INNER JOIN product_info as pi ON p.id = pi.product_id
-            INNER JOIN sellers as s ON s.id = a.replier_id
-            INNER JOIN seller_info as si ON s.id = si.seller_id
-            WHERE q.is_deleted = 0
-            AND a.is_deleted = 0
-            AND u.is_deleted = 0
-            AND p.is_deleted = 0
-            AND pi.is_deleted = 0
-            AND s.is_deleted = 0
-        """
-
-        # 전체 갯수를 count하여 fetch 및 dictionary로 casting
-        qna_count = dict(session.execute(qna_count_statement).fetchone())
-
         # 필터링 된 count를 fetch 및 dictionary로 casting
-        filter_query_values_count = dict(session.execute(filter_query_values_count_statement, valid_param).fetchone())
+        qna_count = int(session.execute(filter_query_values_count_statement, valid_param).fetchone()[0])
 
-        # fetch해서 가져온 값을 dictionary에 add
-        qna_count['filtered_qna_count'] = filter_query_values_count['filtered_qna_count']
+        page_number = math.ceil(qna_count / valid_param['filterLimit'])
 
-        return qna_list, qna_count
+        return qna_list, qna_count, page_number
 
     def qna_answer_info(self, valid_param, session):
         """

@@ -1,8 +1,9 @@
 import re
 import uuid
+import traceback
 
 from sqlalchemy import exc
-from flask import jsonify, Blueprint, request
+from flask import jsonify, Blueprint, request, g
 from flask_request_validator import (
     GET,
     Param,
@@ -11,7 +12,7 @@ from flask_request_validator import (
     validate_params
 )
 
-from utils import login_required, allowed_file
+from utils import login_required, delete_image_in_s3
 
 def create_product_endpoints(product_service, Session):
 
@@ -98,12 +99,25 @@ def create_product_endpoints(product_service, Session):
             # 조회 기간 끝
             filter_dict['filterDateTo'] = args[10]
 
-            body = [dict(product) for product in product_service.get_products(filter_dict, session)]
+            # 상품 정보
+            products = product_service.get_products(filter_dict, session)[0]
+
+            # 상품 쿼리 결과 count
+            count_info = product_service.get_products(filter_dict, session)[1]
+
+            body = {
+                'order'              : [dict(product) for product in products],
+                'page_number'        : count_info[0].p_count,
+                'total_order_number' : round(count_info[0].p_count / filter_dict['filterLimit'])
+            }
 
             return jsonify(body), 200
 
+        except exc.ProgrammingError:
+            return jsonify(({'message': 'ERROR_IN_SQL_SYNTAX'})), 500
+
         except Exception as e:
-            return jsonify({'message' : f'{e}'}), 500
+            return jsonify({'message': f'{e}'}), 500
 
         finally:
             session.close()
@@ -134,6 +148,12 @@ def create_product_endpoints(product_service, Session):
             body = dict(product_service.get_product(product_id, session))
 
             return jsonify(body), 200
+
+        except exc.ProgrammingError:
+            return jsonify({'message': 'ERROR_IN_SQL_SYNTAX'}), 500
+
+        except AttributeError:
+            return jsonify({'message': 'THERE_IS_NO_PRODUCT_DATA'}), 400
 
         except Exception as e:
             return jsonify({'message': f'{e}'}), 500
@@ -167,6 +187,9 @@ def create_product_endpoints(product_service, Session):
             body = [dict(history) for history in product_service.get_product_history(product_id, session)]
 
             return jsonify(body), 200
+
+        except exc.ProgrammingError:
+            return jsonify({'message': 'ERROR_IN_SQL_SYNTAX'}), 500
 
         except Exception as e:
             return jsonify({'message': f'{e}'}), 500
@@ -203,6 +226,9 @@ def create_product_endpoints(product_service, Session):
             product_service.make_excel(id_list, session)
 
             return jsonify({'message': 'SUCCESS'}), 200
+
+        except exc.ProgrammingError:
+            return jsonify({'message': 'ERROR_IN_SQL_SYNTAX'}), 500
 
         except Exception as e:
             return jsonify({'message': f'{e}'}), 500
@@ -244,6 +270,9 @@ def create_product_endpoints(product_service, Session):
 
             return jsonify(body), 200
 
+        except exc.ProgrammingError:
+            return jsonify({'message': 'ERROR_IN_SQL_SYNTAX'}), 500
+
         except Exception as e:
             return jsonify({'message': f'{e}'}), 500
 
@@ -255,7 +284,7 @@ def create_product_endpoints(product_service, Session):
     def product_categories():
         """ 1차, 2차 카테고리 정보 전달 API
 
-        셀러의 속성 아이디를 받아 1차 카테고리, 1차 카테고리 아이디를 받아 2차 카테고리 정보를 전달한다.
+        셀러의 속성 아이디를 받아 1차 카테고리, 1차 카테고리 아이디를 받아 2차 카테고리 정보를 전달합니다.
 
         args:
             seller_attr_id: 셀러의 속성 id
@@ -279,20 +308,17 @@ def create_product_endpoints(product_service, Session):
 
             # 셀러 속성 아이디가 들어왔을 경우 1차 카테고리 정보를 반환
             if seller_attr_id:
-                body = [{
-                    'id'   : cat.f_id,
-                    'name' : cat.first_category_name
-                } for cat in product_service.get_first_categories(seller_attr_id, session)]
+                body = [dict(cat) for cat in product_service.get_first_categories(seller_attr_id, session)]
 
                 return jsonify(body), 200
 
             # 1차 카테고리 아이디가 들어왔을 경우 2차 카테고리 정보를 반환
-            body = [{
-                'id'   : cat.s_id,
-                'name' : cat.second_category_name
-            } for cat in product_service.get_second_categories(f_category_id, session)]
+            body = [dict(cat)for cat in product_service.get_second_categories(f_category_id, session)]
 
             return jsonify(body), 200
+
+        except exc.ProgrammingError:
+            return jsonify({'message': 'ERROR_IN_SQL_SYNTAX'}), 500
 
         except Exception as e:
             return jsonify({'message': f'{e}'}), 500
@@ -326,8 +352,10 @@ def create_product_endpoints(product_service, Session):
             2020-10-03 (고지원): 초기 생성
             2020-10-04 (고지원): 상품 정보 입력 시 제한 사항 에러 추가
             2020-10-10 (고지원): 여러 개의 이미지를 업로드 할 수 있도록 수정
+            2020-10-12 (고지원): 에러 발생 시 세션 rollback 과 함께 s3 에 업로드 된 이미지도 삭제되도록 수정
         """
         session = Session()
+        image_urls = ''
         try:
             # 상품명에 ' 또는 " 포함 되었는지 체크
             pattern = re.compile('[\"\']')
@@ -354,16 +382,20 @@ def create_product_endpoints(product_service, Session):
             product_code = str(uuid.uuid4())
 
             # S3 이미지 저장
-            image_urls = list()
+            images = list()
 
+            # 1~5 개의 이미지를 가져온다.
             for idx in range(1, 6):
                 image = request.files.get(f'image_{idx}', None)
 
                 if image:
-                    # 허용된 확장자인지 확인 (png, jpg, jpeg)
-                    allowed_file(image.filename)
-                    image_url = product_service.save_product_image(image, product_code)
-                    image_urls.append(image_url)
+                    images.append(image)
+
+            image_urls = product_service.upload_image(product_code, images)
+
+            # 반환된 image_urls 가 허용되지 않은 확장자일 경우 400 에러 메시지를 반환한다.
+            if 400 in image_urls:
+                return image_urls
 
             # 상품 입력을 위한 데이터를 받는다.
             product_info = {
@@ -374,7 +406,7 @@ def create_product_endpoints(product_service, Session):
                 'simple_description': request.form['simple_description'],
                 'detail_description': request.form['detail_description'],
                 'price': request.form['price'],
-                'is_definite' :request.form['is_definite'],
+                'is_definite': request.form['is_definite'],
                 'discount_rate': request.form['discount_rate'],
                 'discount_price': request.form['discount_price'],
                 'min_unit': request.form['min_unit'],
@@ -397,20 +429,134 @@ def create_product_endpoints(product_service, Session):
             return jsonify({'message': 'SUCCESS'}), 200
 
         except KeyError:
+            session.rollback()
+            delete_image_in_s3(image_urls, None)
             return jsonify({'message': 'KEY_ERROR'}), 400
 
         except exc.IntegrityError:
-            return jsonify({'message': 'DUPLICATE_DATA'}), 400
+            session.rollback()
+            delete_image_in_s3(image_urls, None)
+            return jsonify({'message': 'INTEGRITY_ERROR'}), 400
 
         except exc.InvalidRequestError:
-            return jsonify(({'message': 'INVALID_REQUEST'})), 400
+            session.rollback()
+            delete_image_in_s3(image_urls, None)
+            return jsonify({'message': 'INVALID_REQUEST'}), 400
 
         except exc.ProgrammingError:
-            return jsonify(({'message': 'ERROR_IN_SQL_SYNTAX'})), 500
+            session.rollback()
+            delete_image_in_s3(image_urls, None)
+            return jsonify({'message': 'ERROR_IN_SQL_SYNTAX'}), 500
 
         except Exception as e:
             session.rollback()
-            
+            delete_image_in_s3(image_urls, None)
+            return jsonify({'message': f'{e}'}), 500
+
+        finally:
+            session.close()
+
+    @product_app.route('/update', methods=['POST'], endpoint='update_product')
+    @login_required(Session)
+    def update_product():
+        """ 상품 정보 수정 API
+
+        returns :
+            200: 상품 정보를 데이터베이스에 저장
+            400:
+                NAME_CANNOT_CONTAIN_QUOTATION_MARK,
+                START_DATE_CANNOT_BE_EARLIER_THAN_END_DATE,
+                CANNOT_SET_MORE_THAN_20,
+                CANNOT_SET_LESS_THAN_10,
+                DISCOUNT_RANGE_CAN_BE_SET_FROM_0_TO_99,
+                DUPLICATE_DATA,
+                INVALID_REQUEST
+            500:
+                 Exception,
+                 ERROR_IN_SQL_SYNTAX
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-10 (고지원): 초기 생성
+        """
+        session = Session()
+        try:
+            # 상품 입력을 위한 데이터를 받는다.
+            old_images = request.form['images'].split(',')
+            product_info = {
+                'product_id': request.form['product_id'],
+                'product_code': request.form['product_code'],
+                'seller_id': request.form['seller_id'],
+                'is_on_sale': request.form['is_on_sale'],
+                'is_displayed': request.form['is_displayed'],
+                'name': request.form['name'],
+                'simple_description': request.form['simple_description'],
+                'detail_description': request.form['detail_description'],
+                'price': request.form['price'],
+                'is_definite': request.form['is_definite'],
+                'discount_rate': request.form['discount_rate'],
+                'discount_price': request.form['discount_price'],
+                'min_unit': request.form['min_unit'],
+                'max_unit': request.form['max_unit'],
+                'is_stock_managed': request.form['is_stock_managed'],
+                'stock_number': request.form['stock_number'],
+                'first_category_id': request.form['first_category_id'],
+                'second_category_id': request.form['second_category_id'],
+                'modifier_id': g.seller_info['seller_no'],
+                'images': old_images,
+                'discount_start_date': request.form['discount_start_date'],
+                'discount_end_date': request.form['discount_end_date']
+            }
+
+            # S3 이미지 저장
+            images = list()
+
+            # 1~5 개의 이미지를 가져온다.
+            for idx in range(1, 6):
+                image = request.files.get(f'image_{idx}', None)
+
+                if image:
+                    images.append(image)
+
+            new_images = product_service.upload_image(product_info['product_code'], images)
+
+            # 반환된 image_urls 가 허용되지 않은 확장자일 경우 400 에러 메시지를 반환한다.
+            if 400 in new_images:
+                return new_images
+
+            product_info['new_images'] = new_images
+
+            product_service.update_product(product_info, session)
+
+            session.commit()
+
+            return jsonify({'message': 'SUCCESS'}), 200
+
+        except KeyError:
+            session.rollback()
+            delete_image_in_s3(old_images, new_images)
+            return jsonify({'message': 'KEY_ERROR'}), 400
+
+        except exc.IntegrityError:
+            session.rollback()
+            delete_image_in_s3(old_images, new_images)
+            return jsonify({'message': 'DUPLICATE_DATA'}), 400
+
+        except exc.InvalidRequestError:
+            session.rollback()
+            delete_image_in_s3(old_images, new_images)
+            return jsonify({'message': 'INVALID_REQUEST'}), 400
+
+        except exc.ProgrammingError:
+            session.rollback()
+            delete_image_in_s3(old_images, new_images)
+            return jsonify({'message': 'ERROR_IN_SQL_SYNTAX'}), 500
+
+        except Exception as e:
+            session.rollback()
+            delete_image_in_s3(old_images, new_images)
             return jsonify({'message': f'{e}'}), 500
 
         finally:

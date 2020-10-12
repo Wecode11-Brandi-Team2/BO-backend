@@ -1,6 +1,6 @@
-import jwt
+import jwt, re
 from flask import request, g, jsonify
-from config import SECRET
+from config import SECRET, get_s3_resource
 
 def login_required(Session):
     def inner_function(func):
@@ -47,8 +47,24 @@ def login_required(Session):
     return inner_function
 
 # 이미지 파일 업로드 가능한 확장자
-ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg'])
+ALLOWED_EXTENSIONS = ('jpg', 'jpeg')
 
 def allowed_file(filename):
-    if '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS:
-        return jsonify({'message': 'INVALID_IMAGE'}), 400
+    if '.' in filename and filename.rsplit('.', 1)[1] not in ALLOWED_EXTENSIONS:
+        return jsonify({'message': 'INVALID_EXTENSION'}), 400
+
+# 에러 발생 시 S3 서버에 업로드된 이미지를 삭제하는 메소드
+def delete_image_in_s3(images, new_images):
+    s3_resource = get_s3_resource()
+
+    if new_images:
+        for new_image in new_images:
+            if new_image not in images:
+                # 이미지 url 에서 파일 이름을 가져온다.
+                file_name = re.findall('https:\/\/brandi-images\.s3\.ap-northeast-2\.amazonaws\.com\/(.*)', new_image)
+                s3_resource.delete_object(Bucket='brandi-images', Key=f'{file_name[0]}')
+    else:
+        for image in images:
+            # 이미지 url 에서 파일 이름을 가져온다.
+            file_name = re.findall('https:\/\/brandi-images\.s3\.ap-northeast-2\.amazonaws\.com\/(.*)', image)
+            s3_resource.delete_object(Bucket='brandi-images', Key=f'{file_name[0]}')

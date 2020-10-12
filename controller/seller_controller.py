@@ -46,10 +46,10 @@ def create_seller_endpoints(services, Session):
 
     @seller_bp.route('/signup', methods = ['POST'])
     def create_sign_up():
-        try:
-            # transaction start
-            session = Session()
+        # transaction start
+        session = Session()
 
+        try:
             seller_info       = request.json
             if seller_info['attribute_id'] == 1 or 2 or 3: 
                 seller_info['attribute_id'] = 4
@@ -204,8 +204,9 @@ def create_seller_endpoints(services, Session):
         seller_info = g.seller_info
 
         # 데이터베이스 커넥션을 열어줌.
+        session = Session()
+        
         try:
-            session = Session()
             if session:
                 seller_list_result = seller_service.get_seller_list(valid_param, seller_info, session)
                 # tuple unpacking
@@ -398,6 +399,24 @@ def create_seller_endpoints(services, Session):
         Param('new_password', JSON, str, required = False)
     )
     def change_password(*args, **kwargs):
+        """
+        셀러 정보 수정 중 패스워드 변경 함수
+
+        Args:
+            validate_params를 통과 한 path_parameter 및 JSON
+        Returns:
+            200 정상적으로 비밀번호 수정
+            400 기존의 비밀번호와 동일한 비밀번호로 수정을 요청할 경우
+            401 기존의 비밀번호가 다른 경우
+            500 DB connection Error
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-02 (hj885353@gmail.com) : 초기 생성
+            2020-10-12 (hj885353@gmail.com)
+                기존 : 비밀번호 수정만 가능. 수정이 성공적으로 이루어지는 경우 외 다른 경우에 대한 로직이 없었음
+                변경 : 기존과 동일한 비밀번호를 입력한 경우와 비밀번호가 다른 경우에 대한 로직 추가
+        """
         # 변경할 비밀번호, 비밀번호 재입력
         change_info = {
             'parameter_seller_no': args[0],
@@ -409,10 +428,20 @@ def create_seller_endpoints(services, Session):
 
         try:
             if session:
+                
                 change_password_result = seller_service.change_password(change_info, session)
-                session.commit()
-                return jsonify({'message' : 'SUCCESS'}), 200
-            
+                # 현재 비밀번호가 DB에 저장되어 있는 비밀번호와 일치 할 경우
+                if change_password_result[0]:
+                    # 수정하려는 비밀번호가 DB에 저장되어 있는 비밀번호와 동일할 경우
+                    if change_password_result[1]:
+                        return jsonify({'message' : 'SAME_PASSWORD_CANNOT_BE_USED'}), 400
+
+                    # 수정사항 저장
+                    session.commit()
+                    return jsonify({'message' : 'SUCCESS'}), 200
+
+                # 기존의 비밀번호와 DB 저장되어 있는 비밀번호가 다른 경우의 메세지
+                return jsonify({'message' : 'INVALID_PASSWORD'}), 401
             return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
         
         except Exception as e:

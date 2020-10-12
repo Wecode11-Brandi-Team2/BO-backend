@@ -155,8 +155,6 @@ def create_seller_endpoints(services, Session):
         Param('action', GET, str, required = False),
         Param('start_at', GET, str, required = False),
         Param('end_date', GET, str, required = False),
-        Param('offset', GET, int, required = False),
-        Param('limit', GET, int, required = False),
         Param('filterLimit', GET, int, required = False),
         Param('page', GET, int, required = False)
     )
@@ -199,10 +197,8 @@ def create_seller_endpoints(services, Session):
         valid_param['action']           = args[12]
         valid_param['start_at']         = start_at
         valid_param['end_date']         = end_date
-        # valid_param['limit']            = args[15] if args[15] else 10
-        # valid_param['offset']           = args[16] if args[16] else 0
-        valid_param['filterLimit']      = args[17]
-        valid_param['page']             = args[18]
+        valid_param['filterLimit']      = args[15]
+        valid_param['page']             = args[16]
 
         # 유저 정보를 g에서 읽어와서 service 에 전달
         seller_info = g.seller_info

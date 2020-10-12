@@ -21,7 +21,6 @@ def create_review_endpoints(services, Session):
     @review_bp.route('/', methods = ['GET'], endpoint = 'get_review_list')
     @login_required(Session)
     @validate_params(
-        Param('selectValue', GET, str, required = False),
         Param('REVIEW_TEXT', GET, str, required = False),
         Param('PRODUCT_INQRY_NO', GET, int, required = False),
         Param('MEMBER_NAME', GET, str, required = False),
@@ -32,8 +31,7 @@ def create_review_endpoints(services, Session):
         Param('NEW_REGIST', GET, str, required = False),
         Param('NEW_EDIT', GET, str, required = False),
         Param('filterLimit', GET, int, required = False),
-        Param('limit', GET, int, required = False),
-        Param('offset', GET, int, required = False)
+        Param('page', GET, int, required = False)
     )
     def get_review_list(*args, **kwargs):
         """
@@ -51,22 +49,23 @@ def create_review_endpoints(services, Session):
             hj885353@gmail.com (김해준)
         History:
             2020-10-07 (hj885353@gmail.com) : 초기 생성
+            2020-10-12 (hj885353@gmail.com) : 페이지네이션 filterLimit, page 사용하여 로직 수정
+             - 마지막 페이지 number return 하도록 수정
+             - 검색 카테고리가 선택되지 않은 상태에서의 검색 입력값만은 불필요하기 때문에 삭제
         """
         valid_param = {}
 
-        valid_param['selectValue']      = args[0] # 검색 입력값
-        valid_param['REVIEW_TEXT']      = args[1] # 글 내용
-        valid_param['PRODUCT_INQRY_NO'] = args[2] # 글 번호
-        valid_param['MEMBER_NAME']      = args[3] # 셀러명
-        valid_param['registStartDate']  = args[4] # 등록일 시작
-        valid_param['registEndDate']    = args[5] # 등록일 끝
-        valid_param['updateStartDate']  = args[6] # 수정일 시작
-        valid_param['updateEndDate']    = args[7] # 수정일 끝
-        valid_param['NEW_REGIST']       = args[8] # 등록일시 최신순
-        valid_param['NEW_EDIT']         = args[9] # 수정일시 최신순
-        valid_param['filterLimit']      = args[10] # 10개씩 보기
-        valid_param['limit']            = args[11] if args[11] else 10 # pagination limit
-        valid_param['offset']           = args[12] if args[12] else 0 # pagination offset
+        valid_param['REVIEW_TEXT']      = args[0] # 글 내용
+        valid_param['PRODUCT_INQRY_NO'] = args[1] # 글 번호
+        valid_param['MEMBER_NAME']      = args[2] # 셀러명
+        valid_param['registStartDate']  = args[3] # 등록일 시작
+        valid_param['registEndDate']    = args[4] # 등록일 끝
+        valid_param['updateStartDate']  = args[5] # 수정일 시작
+        valid_param['updateEndDate']    = args[6] # 수정일 끝
+        valid_param['NEW_REGIST']       = args[7] # 등록일시 최신순
+        valid_param['NEW_EDIT']         = args[8] # 수정일시 최신순
+        valid_param['filterLimit']      = args[9] # 10개씩 보기
+        valid_param['page']             = args[10] # page number
 
         try:
             # db connection
@@ -75,8 +74,8 @@ def create_review_endpoints(services, Session):
                 # dao와 service를 거친 결과 목록 반환
                 review_list_result = review_service.get_review_list(valid_param, session)
                 # tuple -> list로 casting
-                review_list, review_count = review_list_result
-                return jsonify({'review_list' : review_list, 'review_count' : review_count})
+                review_list, review_count, page_number = review_list_result
+                return jsonify({'review' : review_list, 'total_review_number' : review_count, 'page_number' : page_number})
             else:
                 # db connection error
                 return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500

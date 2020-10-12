@@ -190,11 +190,41 @@ class SellerService:
         return check_duplication_result
 
     def change_password(self, change_info, session):
-        origin_password = self.seller_dao.get_password(change_info, session)
-        
-        if bcrypt.checkpw(change_info['original_password'].encode('UTF-8'), origin_password['password'].encode('UTF-8')):
-            hashed_password = bcrypt.hashpw(change_info['new_password'].encode('UTF-8'), bcrypt.gensalt()).decode('UTF-8')
+        """
+        셀러 정보 수정 중 패스워드 변경 함수
 
-            self.seller_dao.change_password(change_info, hashed_password, session)
-        else:
-            return jsonify({'message' : 'INVALID_PASSWORD'}), 401
+        Args:
+            change_info : 사용자가 입력한 현재 패스워드, 수정 할 패스워드, 로그인 데코레이터를 통과 한 seller 정보
+            session : db connection 객체
+        Returns:
+            change_password_result : 현재 비밀번호와 DB에 저장되어 있는 비밀번호를 비교 (r'type : boolean)
+            confirm_password_result : 수정하려는 비밀번호와 DB에 저장되어 있는 비밀번호를 비교 (r'type : boolean)
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-02 (hj885353@gmail.com) : 초기 생성
+            2020-10-12 (hj885353@gmail.com)
+                기존 : 비밀번호 수정만 가능. 수정이 성공적으로 이루어지는 경우 외 다른 경우에 대한 로직이 없었음
+                변경 : 기존과 동일한 비밀번호를 입력한 경우와 비밀번호가 다른 경우에 대한 로직 추가
+        """
+        # DB에서 기존의 비밀번호를 가져옴
+        origin_password = self.seller_dao.get_password(change_info, session)
+        # 현재 비밀번호와 DB에서 가져온 기존의 비밀번호를 비교
+        change_password_result = bcrypt.checkpw(change_info['original_password'].encode('UTF-8'), origin_password['password'].encode('UTF-8'))
+        # 수정하려는 비밀번호와 DB에서 가져온 기존의 비밀번호를 비교
+        confirm_password_result = bcrypt.checkpw(change_info['new_password'].encode('UTF-8'), origin_password['password'].encode('UTF-8'))
+        
+        # 현재 비밀번호와 DB 비밀번호가 같을 경우
+        if change_password_result:
+
+            # 수정하려는 비밀번호와 DB 저장되어 있는 비밀번호가 같지 않은 경우
+            if not confirm_password_result:
+                # 새로운 비밀번호를 hash화하여 dao에 전달
+                hashed_password = bcrypt.hashpw(change_info['new_password'].encode('UTF-8'), bcrypt.gensalt()).decode('UTF-8')
+                self.seller_dao.change_password(change_info, hashed_password, session)
+                # 두개의 boolean값을 controller에 return
+                return change_password_result, confirm_password_result
+
+            return change_password_result, confirm_password_result
+        # 현재 비밀번호와 DB의 비밀번호부타가 다른 경우는 하위의 boolean만 controller로 전달
+        return change_password_result

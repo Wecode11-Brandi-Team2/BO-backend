@@ -218,8 +218,8 @@ class SellerDao:
 
         # 등록일 검색 시작 날짜
         if valid_param.get('mber_date_from', None):
-            select_seller_list_statement += " AND DATE(start_at) = :mber_date_from"
-            filter_query_values_count_statement += " AND DATE(start_at) = :mber_date_from"
+            select_seller_list_statement += " AND DATE(start_at) >= :mber_date_from"
+            filter_query_values_count_statement += " AND DATE(start_at) >= :mber_date_from"
 
         # 등록일 검색 끝 날짜
         if valid_param.get('mber_date_from', None) and valid_param.get('mber_date_to', None):
@@ -517,13 +517,13 @@ class SellerDao:
         # DB에 있는 한글 셀러명 중 인자로 넘어온 kor_name이 있는지 조회하는 쿼리문
         seller_kor_name_statement = """
             SELECT
-                korean_name
+                count(korean_name)
             FROM seller_info
             WHERE korean_name = :korean_name 
             AND is_deleted = 0
         """
         # rowcount로 일치하는 한글 셀러명의 수를 count한다. 있을 경우 1, 없을 경우 0
-        seller_kor_name = session.execute(seller_kor_name_statement, kor_name).rowcount
+        seller_kor_name = int(session.execute(seller_kor_name_statement, kor_name).fetchone()[0])
         return seller_kor_name
 
     def check_duplication_eng(self, eng_name, session):
@@ -546,20 +546,36 @@ class SellerDao:
         # DB에 있는 한글 셀러명 중 인자로 넘어온 eng_name이 있는지 조회하는 쿼리문
         seller_eng_name_statement = """
             SELECT
-                eng_name
+                count(eng_name)
             FROM seller_info
             WHERE eng_name = :eng_name
             AND is_deleted = 0
         """
         # rowcount로 일치하는 영문 셀러명의 수를 count한다. 있을 경우 1, 없을 경우 0
-        seller_eng_name = session.execute(seller_eng_name_statement, eng_name).rowcount
+        seller_eng_name = int(session.execute(seller_eng_name_statement, eng_name).fetchone()[0])
         return seller_eng_name
 
     def get_password(self, change_info, session):
+        """
+        셀러 정보 수정 중 패스워드 변경 함수
+
+        DB에서 hash화 되어 있는 상태인 비밀번호를 조회하여 service로 전달해주는 역할의 함수
+
+        Args:
+            change_info : 사용자가 입력한 현재 패스워드, 수정 할 패스워드, 로그인 데코레이터를 통과 한 seller 정보
+            session : db connection 객체
+        Returns:
+           DB에 저장되어 있는 hash 상태의 비밀번호 (r'type : dict) 
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-02 (hj885353@gmail.com) : 초기 생성
+        """
         seller_no_data = {
             'seller_no' : change_info['seller_info']['seller_no']
         }
         
+        # 인자로 받은 seller_no를 받아, no에 해당하는 hashed password를 조회하는 쿼리문
         seller_password_statement = """
             SELECT
                 password
@@ -572,11 +588,27 @@ class SellerDao:
         return origin_password
 
     def change_password(self, change_info, hashed_password, session):
+        """
+        셀러 정보 수정 중 패스워드 변경 함수
+
+        service로부터 인자를 전달 받아 해당 seller_id에 해당하는 password field의 값을 update한다.
+
+        Args:
+            change_info : 사용자가 입력한 현재 패스워드, 수정 할 패스워드, 로그인 데코레이터를 통과 한 seller 정보
+            session : db connection 객체
+        Returns:
+            
+        Authors:
+            hj885353@gmail.com (김해준)
+        History:
+            2020-10-02 (hj885353@gmail.com) : 초기 생성
+        """
         change_info_data = {
             'password' : hashed_password,
             'seller_no': change_info['seller_info']['seller_no']
         }
 
+        # seller_id를 받아 해당 id에 해당하는 password값 update하는 쿼리문
         update_password_statement = """
             UPDATE
                 seller_info

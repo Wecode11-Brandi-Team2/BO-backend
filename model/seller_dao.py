@@ -1,5 +1,6 @@
 import bcrypt
 import datetime
+import math
 from flask           import jsonify
 from sqlalchemy import text
 
@@ -30,37 +31,48 @@ class SellerDao:
             2020-10-07 (hj885353@gmail.com) : schema 변경으로 쿼리문 수정
                 기존 : seller_info Table -> loginID
                 변경 : sellers Table -> login_id
+            2020-10-12 (hj885353@gmail.com) : f-string 방식을 dict insert 방식으로 변경
         """
+        
         # sellers table에 data를 input
-        seller_query = """
+        seller_query = session.execute(("""
             INSERT INTO sellers (
                 login_id,
                 is_admin,
                 created_at,
                 is_deleted
-            )VALUES """
-        values = f"('{seller_info['seller_loginID']}', 0, now(), 0)"
-        seller_query += values
-        new_seller = session.execute(seller_query)
-        # 새로 insert 되는 seller_id를 lastrowid를 사용하여 seller_info에 연결
-        new_seller_last_id = new_seller.lastrowid
+            ) VALUES (
+                :seller_loginID,
+                0,
+                now(),
+                0
+            )"""), seller_info)
 
+        # 새로 insert 되는 seller_id를 lastrowid를 사용하여 seller_info에 연결
+        new_seller_last_id = seller_query.lastrowid
+        
         # managers table에 data를 input
-        manager_info_query = """
+        manager_info_query = session.execute(("""
             INSERT INTO managers (
                 phone_number,
-                is_deleted             
-            ) VALUES """
-        values = f"({seller_info['phone_number']}, 0)"
-        manager_info_query += values
-        new_manager = session.execute(manager_info_query)
+                is_deleted
+            ) VALUES (
+                :phone_number,
+                0
+            )
+        """), seller_info)
+        
         # 새로 insert 되는 manager_id를 lastrowid를 사용하여 seller_info에 연결
-        new_manager_last_id = new_manager.lastrowid
+        new_manager_last_id = manager_info_query.lastrowid
+
+        # seller_info dict에 추가
+        seller_info['new_seller_last_id'] = new_seller_last_id
+        seller_info['new_manager_last_id'] = new_manager_last_id
 
         # seller_info table에 data를 input
-        seller_info_query = """
+        seller_info_query = session.execute(("""
             INSERT INTO seller_info (
-                password, 
+                password,
                 korean_name,
                 eng_name,
                 service_center_phone,
@@ -73,10 +85,22 @@ class SellerDao:
                 start_at,
                 end_date,
                 is_deleted
-            ) VALUES """
-        values = f"('{seller_info['hashed_password']}', '{seller_info['korean_name']}', '{seller_info['eng_name']}', '{seller_info['center_number']}' , '{seller_info['site_url']}', {new_seller_last_id}, {seller_info['attribute_id']}, 1, {new_manager_last_id}, {new_seller_last_id}, now(), '9999-12-31 23:59:59', 0)"
-        seller_info_query += values
-        seller_info = session.execute(seller_info_query)
+            ) VALUES (
+                :hashed_password,
+                :korean_name,
+                :eng_name,
+                :center_number,
+                :site_url,
+                :new_seller_last_id,
+                :attribute_id,
+                1,
+                :new_manager_last_id,
+                :new_seller_last_id,
+                now(),
+                '9999-12-31 23:59:59',
+                0
+            )
+        """), seller_info)
 
     def get_seller_id_and_password(self, seller_info, session):
         """
@@ -126,10 +150,17 @@ class SellerDao:
         Authors:
             hj885353@gmail.com(김해준)
         History:
-            2020-09-28(hj885353@gmail.com): 초기 생성
+            2020-09-28 (hj885353@gmail.com): 초기 생성
             2020-10-07 (hj885353@gmail.com) : schema 변경으로 쿼리문 수정
                 기존 : seller_info Table -> loginID
                 변경 : sellers Table -> login_id
+            2020-10-12 (hj885353@gmail.com) : 페이지네이션 쿼리스트링 및 로직 변경, return값 변경
+                기존 : offset, limit 으로 페이지네이션
+                      seller_list, seller_count만 return
+                변경 : SQL LIMIT, OFFSET 사용하여 10개씩 보기, 20개씩 보기 등의 로직 구현
+                      마지막 페이지 번호도 Response로 보내주도록 구현
+                      필터링 된 갯수만 return해주도록 변경. 
+
         """
         # 키워드 검색을 위한 쿼리문
         select_seller_list_statement = """
@@ -240,27 +271,26 @@ class SellerDao:
         if valid_param.get('end_date', None):
             select_seller_list_statement += " AND end_date = :end_date"
             filter_query_values_count_statement += " AND end_date = :end_date"
+
+        # 페이지네이션
+        if valid_param.get('filterLimit', None):
+            if valid_param.get('page', None):
+                valid_param['offset'] = valid_param['page'] * valid_param['filterLimit']
+                select_seller_list_statement += " LIMIT :filterLimit OFFSET :offset"
+            else:
+                select_seller_list_statement += " LIMIT :filterLimit"
         
         # sql 명령문에 키워드 추가가 완료되면 정렬, limit, offset 쿼리문 추가
-        select_seller_list_statement += " ORDER BY seller_info.seller_id DESC LIMIT :limit OFFSET :offset"
         seller_infos = session.execute(select_seller_list_statement, valid_param).fetchall()
         seller_info = [ dict(seller) for seller in seller_infos ]
-        
-        # pagination 을 위해서 전체 셀러가 몇명인지 count 해서 기존의 seller_info 에 넣어줌.
-        seller_count_statement = """
-            SELECT
-                COUNT(seller_id) as total_seller_count
-            FROM seller_info
-            LEFT JOIN sellers ON seller_info.seller_id = sellers.id 
-            WHERE end_date = '9999-12-31 23:59:59' AND sellers.is_deleted = 0
-        """
-        seller_count = dict(session.execute(seller_count_statement).fetchone())
 
         # 쿼리파라미터가 들어오면 필터 된 셀러를 카운트하고 리턴 값에 포함시킨다. 쿼리파라미터가 들어오지않으면 전체 셀러 수를 포함시킴.
-        filter_query_values_count = dict(session.execute(filter_query_values_count_statement, valid_param).fetchone())
+        seller_count = int(session.execute(filter_query_values_count_statement, valid_param).fetchone()[0])
 
-        seller_count['filtered_seller_count'] = filter_query_values_count['filtered_seller_count']
-        return seller_info, seller_count
+        # 마지막 페이지 번호 출력. filterLimit으로 count를 나누고 그 값을 올림해주어 Return
+        page_number = math.ceil(seller_count / valid_param['filterLimit'])
+
+        return seller_info, seller_count, page_number
 
     def get_seller_info(self, seller_info, session):
         """ 계정의 셀러정보 표출

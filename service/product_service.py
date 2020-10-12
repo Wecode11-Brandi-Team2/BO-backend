@@ -1,5 +1,10 @@
-from config import get_s3_resource
+import re
+
 from werkzeug.utils import secure_filename
+from flask import request
+
+from config import get_s3_resource
+from utils import allowed_file
 
 class ProductService:
     def __init__(self, product_dao):
@@ -55,6 +60,69 @@ class ProductService:
         """
         self.product_dao.insert_product(product_info, session)
 
+    def update_product(self, product_info, session):
+        """ 상품 정보 수정
+
+        상품 수정 시 새로운 이미지와 기존 이미지 리스트를 비교하여 s3에서 이미지를 삭제하고 새로운 상품 이력을 등록합니다.
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-10 (고지원): 초기 생성
+        """
+        s3_resource = get_s3_resource()
+
+        # 기존 이미지가 새로운 이미지 리스트에 없을 경우 s3에서 삭제한다.
+        for old_img in product_info['images']:
+
+            # 이미지 url 에서 파일 이름을 가져온다.
+            file_name = re.findall('https:\/\/brandi-images\.s3\.ap-northeast-2\.amazonaws\.com\/(.*)', old_img)
+
+            if old_img not in product_info['new_images']:
+
+                # 기존 이미지가 새로운 이미지 리스트에 없을 경우 s3 서버에서 이미지를 삭제한다.
+                s3_resource.delete_object(Bucket = 'brandi-images', Key = f'{file_name[0]}')
+
+        self.product_dao.update_product(product_info, session)
+
+    def upload_image(self, product_code, images):
+        """ s3에 이미지를 업로드
+
+        S3 서버에 이미지를 업로드 하고 데이터베이스에 저장될 이미지 url 리스트를 반환한다.
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-05 (고지원): 초기 생성
+            2020-10-09 (고지원): 이미지 url 상품 코드와 파일의 이름 조합으로 수정
+        """
+        image_urls = list()
+
+        # s3 서버 연결 및 이미지 업로드
+        s3_resource = get_s3_resource()
+
+        for image in images:
+            # 허용된 jpg, jpeg 확장자인지 확인한다.
+            message = allowed_file(image.filename)
+
+            # jpg, jpeg 확장자가 아닐 경우 에러 메세지가 반환된다.
+            if message:
+                return message
+
+            # 해킹으로부터 파일 이름 보호
+            image_filename = secure_filename(image.filename)
+
+            # s3 서버에 이미지 업로드
+            s3_resource.put_object(Body = image, Bucket = 'brandi-images', Key = f'{product_code}_{image_filename}', ContentType = 'image/jpeg')
+
+            # 데이터베이스에 저장할 이미지 url 을 리스트에 추가한다.
+            image_url = f'https://brandi-images.s3.ap-northeast-2.amazonaws.com/{product_code}_{image_filename}'
+            image_urls.append(image_url)
+
+        return image_urls
+
     def get_products(self, filter_dict, session):
         """ 상품 리스트 전달
 
@@ -68,29 +136,6 @@ class ProductService:
         products = self.product_dao.get_products(filter_dict, session)
 
         return products
-
-    def save_product_image(self, image, product_code):
-        """ s3에 이미지를 업로드
-        Authors:
-            고지원
-
-        History:
-            2020-10-05 (고지원): 초기 생성
-            2020-10-09 (고지원): 이미지 url 상품 코드와 파일의 이름 조합으로 수정
-        """
-
-        # s3 서버 연결 및 이미지 업로드
-        s3_resource = get_s3_resource()
-
-        # 해킹으로부터 파일 이름 보호
-        image_filename = secure_filename(image.filename)
-
-        s3_resource.put_object(Body = image, Bucket = 'brandi-images', Key = f'{product_code}_{image_filename}', ContentType = 'image/jpeg')
-
-        # 데이터베이스에 저장할 이미지 url
-        image_url = f'https://brandi-images.s3.ap-northeast-2.amazonaws.com/{product_code}_{image_filename}'
-
-        return image_url
 
     def get_product(self, product_id, session):
         """ 상품 상세 데이터 전달

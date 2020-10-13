@@ -160,7 +160,7 @@ class SellerDao:
                 변경 : SQL LIMIT, OFFSET 사용하여 10개씩 보기, 20개씩 보기 등의 로직 구현
                       마지막 페이지 번호도 Response로 보내주도록 구현
                       필터링 된 갯수만 return해주도록 변경. 
-
+            2020-10-13 (hj885353@gmail.com) : 내림차순 로직 추가
         """
         # 키워드 검색을 위한 쿼리문
         select_seller_list_statement = """
@@ -276,9 +276,9 @@ class SellerDao:
         if valid_param.get('filterLimit', None):
             if valid_param.get('page', None):
                 valid_param['offset'] = valid_param['page'] * valid_param['filterLimit']
-                select_seller_list_statement += " LIMIT :filterLimit OFFSET :offset"
+                select_seller_list_statement += " ORDER BY sellers.id DESC LIMIT :filterLimit OFFSET :offset"
             else:
-                select_seller_list_statement += " LIMIT :filterLimit"
+                select_seller_list_statement += " ORDER BY sellers.id DESC LIMIT :filterLimit"
         
         # sql 명령문에 키워드 추가가 완료되면 정렬, limit, offset 쿼리문 추가
         seller_infos = session.execute(select_seller_list_statement, valid_param).fetchall()

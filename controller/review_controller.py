@@ -52,6 +52,7 @@ def create_review_endpoints(services, Session):
             2020-10-12 (hj885353@gmail.com) : 페이지네이션 filterLimit, page 사용하여 로직 수정
              - 마지막 페이지 number return 하도록 수정
              - 검색 카테고리가 선택되지 않은 상태에서의 검색 입력값만은 불필요하기 때문에 삭제
+            2020-10-13 (hj885353@gmail.com) : pagination querystring 입력되지 않았을 경우를 위한 default값 설정
         """
         valid_param = {}
 
@@ -64,8 +65,8 @@ def create_review_endpoints(services, Session):
         valid_param['updateEndDate']    = args[6] # 수정일 끝
         valid_param['NEW_REGIST']       = args[7] # 등록일시 최신순
         valid_param['NEW_EDIT']         = args[8] # 수정일시 최신순
-        valid_param['filterLimit']      = args[9] # 10개씩 보기
-        valid_param['page']             = args[10] # page number
+        valid_param['filterLimit']      = args[9] if args[9] else 10 # 10개씩 보기
+        valid_param['page']             = args[10] if args[10] else 0 # page number
 
         try:
             # db connection

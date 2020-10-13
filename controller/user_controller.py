@@ -2,36 +2,78 @@ from flask import (
     jsonify,
     Blueprint
 )
+from flask_request_validator import (
+    GET,
+    validate_params,
+    Param
+)
+from utils import login_required
 
 def create_user_endpoints(services, Session):
     user_service = services
     user_bp = Blueprint('user', __name__, url_prefix = '/api/user')
 
-    """
-    Args:
-        services : service.py 연결
-        Session : db 연결
-    Return:
-        user_list dictionary 형태로 반환
-    Authors:
-        hj885353@gmail.com(김해준)
-    History;
-        2020-09-21 (hj885353@gmail.com) : 초기 생성
-    """
-    @user_bp.route('/', methods = ['GET'])
-    def user_info():
+    @user_bp.route('/', methods = ['GET'], endpoint = 'user_info')
+    @login_required(Session)
+    @validate_params(
+        Param('mber_no', GET, int, required = False),
+        Param('mber_ncnm', GET, str, required = False),
+        Param('mber_phone', GET, str, required = False),
+        Param('mber_email', GET, str, required = False),
+        Param('mber_date_from', GET, str, required = False),
+        Param('mber_date_to', GET, str, required = False),
+        Param('filterLimit', GET, int, required = False),
+        Param('page', GET, int, required = False)
+    )
+    def user_info(*args, **kwargs):
+        """
+        Args:
+            validate_param : validate_params를 통과 한 QueryString
+            Session : db 연결
+        Return:
+            user_list : user에 대한 정보를 담은 list (r'type : list)
+            total_user_number : Response로 보낼 데이터의 숫자 (r'type : int)
+            page_number : 마지막 page_number (r'tpye : int)
+            db_connection_error, 500
+        Authors:
+            hj885353@gmail.com(김해준)
+        History;
+            2020-09-21 (hj885353@gmail.com) : 초기 생성
+            2020-10-13 (hj885353@gmail.com)
+            기존 : QueryString을 사용한 filtering 기능 없음
+                controller에서 dict casting 후 return
+            변경 : QueryString을 사용한 filtering 기능 추가
+                dao에서 dict casting 한 후 그 값을 controller에서 받아서 return
+        """
+        valid_param = {}
+
+        valid_param['mber_no']        = args[0]
+        valid_param['mber_ncnm']      = args[1]
+        valid_param['mber_phone']     = args[2]
+        valid_param['mber_email']     = args[3]
+        valid_param['mber_date_from'] = args[4]
+        valid_param['mber_date_to']   = args[5]
+        valid_param['filterLimit']    = args[6] if args[6] else 10
+        valid_param['page']           = args[7] if args[7] else 0
+
+        session = Session()
+
         try:
-            session = Session()
-
-            user_info = user_service.get_user_info_service(session)
-
-            return jsonify({'user_list' : [ dict(user) for user in user_info ]})
+            if session:
+                # dao와 service를 거친 결과 목록 반환
+                user_list_result = user_service.get_user_info_service(valid_param, session)
+                # tuple -> list로 casting
+                user_list, user_count, page_number = user_list_result
+                return jsonify({'user' : user_list, 'total_user_number' : user_count, 'page_number' : page_number})
+            else:
+                # db connection error
+                return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
 
         except Exception as e:
             return jsonify({'ERROR_MSG' : f'{e}' }), 500
 
         finally:
-            # session close, transaction 종료
+            # db close
             session.close()
 
     return user_bp

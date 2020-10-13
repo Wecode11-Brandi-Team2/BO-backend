@@ -1,10 +1,26 @@
+import math
+
 class UserDao:
-    """
-    user table에서 필요한 field 조회 후 json 형태로 return
-    """
-    def get_user_info(self, session):
-        users = session.execute(
-            """
+    def get_user_info(self, valid_param, session):
+        """
+        Args:
+            validate_param : validate_params를 통과 한 QueryString
+            Session : db 연결
+        Return:
+            user_list : user에 대한 정보를 담은 list (r'type : list)
+            total_user_number : Response로 보낼 데이터의 숫자 (r'type : int)
+            page_number : 마지막 page_number (r'tpye : int)
+        Authors:
+            hj885353@gmail.com(김해준)
+        History;
+            2020-09-21 (hj885353@gmail.com) : 초기 생성
+            2020-10-13 (hj885353@gmail.com)
+            기존 : QueryString을 사용한 filtering 기능 없음
+                controller에서 dict casting 후 return
+            변경 : QueryString을 사용한 filtering 기능 추가
+                dao에서 dict casting 한 후 그 값을 controller에서 받아서 return
+        """
+        select_user_statement = """
             SELECT
                 id,
                 login_id,
@@ -13,6 +29,49 @@ class UserDao:
                 created_at
             FROM
                 users
-            """).fetchall()
+            WHERE is_deleted = 0
+        """
 
-        return users
+        filter_query_values_count_statement = """
+            SELECT
+                count(0) as filtered_user_count
+            FROM
+                users
+            WHERE is_deleted = 0
+        """
+        
+        if valid_param.get('mber_no', None):
+            select_user_statement += " AND id = :mber_no"
+            filter_query_values_count_statement += " AND id = :mber_no"
+
+        if valid_param.get('mber_ncnm', None):
+            select_user_statement += " AND login_id = :mber_ncnm"
+            filter_query_values_count_statement += " AND login_id = :mber_ncnm"
+
+        if valid_param.get('mber_phone', None):
+            select_user_statement += " AND phone_number = :mber_phone"
+            filter_query_values_count_statement += " AND phone_number = :mber_phone"
+
+        if valid_param.get('mber_email', None):
+            select_user_statement += " AND email = :mber_email"
+            filter_query_values_count_statement += " AND email = :mber_email"
+
+        if valid_param.get('mber_date_from', None) and valid_param.get('mber_date_to', None):
+            select_user_statement += " AND DATE(created_at) BETWEEN :mber_date_from AND :mber_date_to"
+            filter_query_values_count_statement += " AND DATE(created_at) BETWEEN :mber_date_from AND :mber_date_to"
+
+        if valid_param.get('filterLimit', None):
+            if valid_param.get('page', None):
+                valid_param['offset'] = valid_param['page'] * valid_param['filterLimit']
+                select_user_statement += " ORDER BY id DESC LIMIT :filterLimit OFFSET :offset"
+            else:
+                select_user_statement += " ORDER BY id DESC LIMIT :filterLimit"
+
+        user_lists = session.execute(select_user_statement, valid_param).fetchall()
+        user_list = [ dict(user) for user in user_lists ]
+
+        user_count = int(session.execute(filter_query_values_count_statement, valid_param).fetchone()[0])
+
+        page_number = math.ceil(user_count / valid_param['filterLimit'])
+
+        return user_list, user_count, page_number

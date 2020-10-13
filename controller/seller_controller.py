@@ -170,6 +170,10 @@ def create_seller_endpoints(services, Session):
             hj885353@gmail.com
         History:
             2020-09-28 (hj885353@gmail.com): 초기 생성
+            2020-10-13 (hj885353@gmail.com): 페이지네이션 로직 변경
+                기존 : offset, limit을 querystring으로 받아서 해당 조건만 걸어줌
+                변경 : SQL의 LIMIT과 OFFSET 기능을 사용하여 10개씩보기, 20개씩 보기 기능 추가
+                      pagenation 관련 QueryString이 입력되지 않았을때를 위한 default값 설정
         """
         start_at = args[13]
         end_date = args[14]
@@ -197,8 +201,8 @@ def create_seller_endpoints(services, Session):
         valid_param['action']           = args[12]
         valid_param['start_at']         = start_at
         valid_param['end_date']         = end_date
-        valid_param['filterLimit']      = args[15]
-        valid_param['page']             = args[16]
+        valid_param['filterLimit']      = args[15] if args[15] else 10
+        valid_param['page']             = args[16] if args[16] else 0
 
         # 유저 정보를 g에서 읽어와서 service 에 전달
         seller_info = g.seller_info

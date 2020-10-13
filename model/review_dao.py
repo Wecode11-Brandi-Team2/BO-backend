@@ -23,6 +23,7 @@ class ReviewDao:
             2020-10-12 (hj885353@gmail.com) : Pagination 로직 변경
              - SQL LIMIT, OFFSET 사용하여 10개씩 보기 등의 로직 가능하도록 구현
              - 마지막 페이지 number return 하도록 변경
+            2020-10-13 (hj885353@gmail.com) : review_id 기준 내림차순 정렬 추가
         """
         # 리뷰에 필요한 데이터를 조회하는 쿼리문
         select_review_statement = """
@@ -102,9 +103,9 @@ class ReviewDao:
         if valid_param.get('filterLimit', None):
             if valid_param.get('page', None):
                 valid_param['offset'] = valid_param['page'] * valid_param['filterLimit']
-                select_review_statement += " LIMIT :filterLimit OFFSET :offset"
+                select_review_statement += " ORDER BY r.id DESC LIMIT :filterLimit OFFSET :offset"
             else:
-                select_review_statement += " LIMIT :filterLimit"
+                select_review_statement += " ORDER BY r.id DESC LIMIT :filterLimit"
 
         # 리뷰 전체 가져와서 dict 형태로 casting
         review_lists = session.execute(select_review_statement, valid_param).fetchall()

@@ -55,6 +55,7 @@ def create_qna_endpoints(services, Session):
         History:
             2020-10-05 (hj885353@gmail.com) : 초기 생성
             2020-10-12 (hj885353@gmail.com) : QueryString 변경
+            2020-10-13 (hj885353@gmail.com) : pagination 관련 QueryString이 입력되지 않았을 경우를 위한 default값 설정
         """
         valid_param = {}
 
@@ -65,8 +66,8 @@ def create_qna_endpoints(services, Session):
         valid_param['inquiryType']     = args[4] # 문의 유형
         valid_param['filterDateFrom']  = args[5] # 등록일 ~부터
         valid_param['filterDateTo']    = args[6] # 등록일 ~까지
-        valid_param['filterLimit']     = args[7] # pagination limit
-        valid_param['page']            = args[8] # page number
+        valid_param['filterLimit']     = args[7] if args[7] else 20 # pagination limit
+        valid_param['page']            = args[8] if args[8] else 0 # page number
 
         # decorator로부터 받아온 seller info를 가진 g 객체
         seller_info = g.seller_info

@@ -20,6 +20,7 @@ class QnADao:
         History:
             2020-10-05 (hj885353@gmail.com) : 초기 생성
             2020-10-12 (hj885353@gmail.com) : QueryString 및 INNER -> LEFT JOIN 변경
+            2020-10-13 (hj885353@gmail.com) : question_id를 기준으로 내림차순 정렬 기능 추가
         """
         # db로부터 Q&A 목록 반환해주는데 필요한 field를 조회하는 쿼리문
         get_qna_list_statement = """
@@ -102,9 +103,9 @@ class QnADao:
         if valid_param.get('filterLimit', None):
             if valid_param.get('page', None):
                 valid_param['offset'] = valid_param['page'] * valid_param['filterLimit']
-                get_qna_list_statement += " LIMIT :filterLimit OFFSET :offset"
+                get_qna_list_statement += " ORDER BY q.id DESC LIMIT :filterLimit OFFSET :offset"
             else:
-                get_qna_list_statement += " LIMIT :filterLimit"
+                get_qna_list_statement += " ORDER BY q.id DESC LIMIT :filterLimit"
 
         # Q&A 전체 목록을 다 가져옴
         qna_lists = session.execute(get_qna_list_statement, valid_param).fetchall()

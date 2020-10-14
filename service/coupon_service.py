@@ -50,7 +50,7 @@ class CouponService:
             dict_coupon_info['validation_end_date'] = dict_coupon_info['validation_end_date'].strftime('%Y-%m-%d %H:%M')
             dict_coupon_info['download_start_date'] = dict_coupon_info['download_start_date'].strftime('%Y-%m-%d %H:%M')
             dict_coupon_info['download_end_date'] = dict_coupon_info['download_end_date'].strftime('%Y-%m-%d %H:%M')
-            dict_coupon_info['is_limited'] = '제한' if dict_coupon_info['is_limited'] == 0 else '무제한'
+            dict_coupon_info['is_limited'] = '제한' if dict_coupon_info['is_limited'] == 1 else '무제한'
             dict_coupon_info['discount_price'] = f"{dict_coupon_info['discount_price']}원"
 
             res_coupon_list.append(dict_coupon_info)

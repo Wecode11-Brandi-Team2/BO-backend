@@ -60,11 +60,11 @@ def create_coupon_endpoints(coupon_service, Session):
                 'downloadStartTo'     : None if args[7] == '' else args[7],      # 다운로드시작구간 종료일 
                 'downloadEndFrom'     : None if args[8] == '' else args[8],      # 다운로드종료구간 시작일 
                 'downloadEndTo'       : None if args[9] == '' else args[9],      # 다운로드종료구간 종료일 
-                'IssueTypeId'         : None if args[10] == -1 else args[10],    # 발급유형          
-                'IsLimited'           : None if args[11] == -1 else args[11],    # 제한여부          
+                'issueTypeId'         : None if args[10] == -1 else args[10],    # 발급유형          
+                'isLimited'           : None if args[11] == -1 else args[11],    # 제한여부          
                 'page'                : args[12] # 페이지네이션        
             }
-            
+
             # 쿠폰리스트 조회 비즈니스로직 호출
             total_coupon_num = coupon_service.get_coupon_count(select_condition, session)
             coupon_list = coupon_service.get_coupon_list(select_condition, session)

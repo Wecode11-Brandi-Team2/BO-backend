@@ -47,14 +47,14 @@ def create_user_endpoints(services, Session):
         """
         valid_param = {}
 
-        valid_param['mber_no']        = args[0]
-        valid_param['mber_ncnm']      = args[1]
-        valid_param['mber_phone']     = args[2]
-        valid_param['mber_email']     = args[3]
-        valid_param['mber_date_from'] = args[4]
-        valid_param['mber_date_to']   = args[5]
-        valid_param['filterLimit']    = args[6] if args[6] else 10
-        valid_param['page']           = args[7] if args[7] else 0
+        valid_param['mber_no']        = args[0] # 회원 번호
+        valid_param['mber_ncnm']      = args[1] # 회원 로그인 아이디
+        valid_param['mber_phone']     = args[2] # 회원 핸드폰 번호
+        valid_param['mber_email']     = args[3] # 회원
+        valid_param['mber_date_from'] = args[4] # 등록일시 ~부터
+        valid_param['mber_date_to']   = args[5] # 등록일시 ~까지
+        valid_param['filterLimit']    = args[6] if args[6] else 10 # 페이지네이션 limit
+        valid_param['page']           = args[7] if args[7] else 1 # 페이지네이션 offset
 
         session = Session()
 

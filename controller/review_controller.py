@@ -66,7 +66,7 @@ def create_review_endpoints(services, Session):
         valid_param['NEW_REGIST']       = args[7] # 등록일시 최신순
         valid_param['NEW_EDIT']         = args[8] # 수정일시 최신순
         valid_param['filterLimit']      = args[9] if args[9] else 10 # 10개씩 보기
-        valid_param['page']             = args[10] if args[10] else 0 # page number
+        valid_param['page']             = args[10] if args[10] else 1 # page number
 
         try:
             # db connection

@@ -10,8 +10,8 @@ def login_required(Session):
             
             if access_token:
                 try:
-                    payload = jwt.decode(access_token, SECRET['SECRET_KEY'], algorithm = SECRET['ALGORITHMS'])
-                    seller_no = payload['seller_info']
+                    payload = jwt.decode(access_token, SECRET['SECRET_KEY'], SECRET['ALGORITHMS'])
+                    seller_no = payload['seller_no']
 
                     if session:
                         get_seller_info_stmt = ("""

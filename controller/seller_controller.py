@@ -202,7 +202,7 @@ def create_seller_endpoints(services, Session):
         valid_param['start_at']         = start_at
         valid_param['end_date']         = end_date
         valid_param['filterLimit']      = args[15] if args[15] else 10
-        valid_param['page']             = args[16] if args[16] else 0
+        valid_param['page']             = args[16] if args[16] else 1
 
         # 유저 정보를 g에서 읽어와서 service 에 전달
         seller_info = g.seller_info
@@ -215,7 +215,7 @@ def create_seller_endpoints(services, Session):
                 seller_list_result = seller_service.get_seller_list(valid_param, seller_info, session)
                 # tuple unpacking
                 seller_list, seller_count, page_number = seller_list_result
-                return jsonify({'sellers' : seller_list, 'total_seller_number' : seller_count, 'page_number' : page_number})
+                return jsonify({'seller' : seller_list, 'total_seller_number' : seller_count, 'page_number' : page_number})
             else:
                 return jsonify({'message': 'NO_DATABASE_CONNECTION'}), 500
 
@@ -228,7 +228,7 @@ def create_seller_endpoints(services, Session):
     @seller_bp.route('/<int:parameter_seller_no>', methods=['GET'], endpoint='get_seller_info')
     @login_required(Session)
     @validate_params(
-        Param('parameter_seller_no', PATH, int, required = False)
+        Param('parameter_seller_no', PATH, int, required = True)
     )
     def get_seller_info(*args, **kwargs):
         """ 계정의 셀러정보 표출

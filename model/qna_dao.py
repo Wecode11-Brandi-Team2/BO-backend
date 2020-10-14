@@ -102,7 +102,7 @@ class QnADao:
         # pagination 및 내림차순 정렬
         if valid_param.get('filterLimit', None):
             if valid_param.get('page', None):
-                valid_param['offset'] = valid_param['page'] * valid_param['filterLimit']
+                valid_param['offset'] = (valid_param['page']-1) * valid_param['filterLimit']
                 get_qna_list_statement += " ORDER BY q.id DESC LIMIT :filterLimit OFFSET :offset"
             else:
                 get_qna_list_statement += " ORDER BY q.id DESC LIMIT :filterLimit"

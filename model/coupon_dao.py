@@ -43,11 +43,14 @@ class CouponDao:
         if select_condition.get('downloadEndTo', None):
             condition_statement += f" AND coupons.download_end_date <= '{select_condition['downloadEndTo']}' "
 
-        if select_condition.get('IssueTypeId', None):
-            condition_statement += f" AND coupons.issue_type_id = {select_condition['IssueTypeId']}"
+        if select_condition.get('issueTypeId', None):
+            condition_statement += f" AND coupons.issue_type_id = {select_condition['issueTypeId']}"
 
-        if select_condition.get('IsLimited', None):
-            condition_statement += f" AND coupons.is_limited = {select_condition['IsLimited']}"
+
+        if select_condition['isLimited'] == 0:
+            condition_statement += f" AND coupons.is_limited = {select_condition['isLimited']}"
+        if select_condition['isLimited'] == 1:
+            condition_statement += f" AND coupons.is_limited = {select_condition['isLimited']}"
 
         query += condition_statement
 
@@ -131,18 +134,20 @@ class CouponDao:
         if select_condition.get('downloadEndTo', None):
             condition_statement += f" AND coupons.download_end_date <= '{select_condition['downloadEndTo']}' "
 
-        if select_condition.get('IssueTypeId', None):
-            condition_statement += f" AND coupons.issue_type_id = {select_condition['IssueTypeId']}"
+        if select_condition.get('issueTypeId', None):
+            condition_statement += f" AND coupons.issue_type_id = {select_condition['issueTypeId']}"
 
-        if select_condition.get('IsLimited', None):
-            condition_statement += f" AND coupons.is_limited = {select_condition['IsLimited']}"
-
+        if select_condition['isLimited'] == 0:
+            condition_statement += f" AND coupons.is_limited = {select_condition['isLimited']}"
+        if select_condition['isLimited'] == 1:
+            condition_statement += f" AND coupons.is_limited = {select_condition['isLimited']}"
 
         condition_statement += ' ORDER BY coupons.id DESC '
 
         condition_statement += f" LIMIT 10 OFFSET {(select_condition['page']-1) * 10} "
 
         query += condition_statement
+
         
         # query 실행
         rows = session.execute(query).fetchall()

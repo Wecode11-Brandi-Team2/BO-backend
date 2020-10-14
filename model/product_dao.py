@@ -1,5 +1,3 @@
-from flask import jsonify
-
 class ProductDao:
     def get_first_categories(self, seller_info, session):
         """ 1차 카테고리 데이터 전달
@@ -158,6 +156,98 @@ class ProductDao:
             AND p.is_deleted = 0 
             """
 
+        # 조회 기간 시작
+        if product_info.get('filterDateFrom', None):
+            filter_query += " AND p_info.created_at >= :filterDateFrom"
+
+        # 조회 기간 끝
+        if product_info.get('filterDateTo', None):
+            filter_query += " AND p_info.created_at <= :filterDateTo"
+
+        # 진열 여부
+        if product_info.get('exhibitionYn', None) in (0, 1):
+            filter_query += " AND p_info.is_displayed = :exhibitionYn"
+
+        # 할인 여부
+        if product_info.get('discountYn', None) in (0, 1):
+            filter_query += " AND p_info.is_promotion = :discountYn"
+
+        # 판매 여부
+        if product_info.get('sellYn', None) in (0, 1):
+            filter_query += " AND p_info.is_on_sale = :sellYn"
+
+        # 셀러 속성
+        if product_info.get('mdSeNo', None):
+            filter_query += " AND s_attr.id = :mdSeNo"
+
+        # 상품 검색: 상품명
+        if product_info.get('selectFilter', None) == 'productName':
+            # 검색어를 formatting 하여 LIKE 절에 사용
+            q = product_info['filterKeyword']
+            product_info['filterKeyword'] = f'%{q}%'
+
+            filter_query += " AND p_info.name LIKE :filterKeyword"
+
+        # 상품 검색: 상품 번호
+        elif product_info.get('selectFilter', None) == 'productNo':
+            q = product_info['filterKeyword']
+            product_info['filterKeyword'] = f'%{q}%'
+
+            filter_query += " AND p_info.product_id = :filterKeyword"
+
+        # 상품 검색: 상품 코드
+        elif product_info.get('selectFilter', None) == 'productCode':
+            q = product_info['filterKeyword']
+            product_info['filterKeyword'] = f'%{q}%'
+
+            filter_query += " AND p_info.product_code = :filterKeyword"
+
+        # 셀러명 검색
+        if product_info.get('mdName', None):
+            name = product_info['mdName']
+            product_info['mdName'] = f'%{name}%'
+
+            filter_query += " AND s_info.korean_name LIKE :mdName"
+
+        # 엑셀 다운을 위한 상품 id list
+        if product_info.get('product_id', None):
+            for idx, id in enumerate(product_info.get('product_id', None)):
+
+                if idx == 0:
+                    filter_query += " AND p.id = " + id
+                else:
+                    filter_query += " OR p.id = " + id
+
+        # pagination
+        if product_info.get('filterLimit', None):
+            filter_query += " LIMIT :filterLimit"
+
+        # pagination
+        if product_info.get('page', None):
+            filter_query += " OFFSET :page"
+
+        filtered_product = session.execute(filter_query, product_info).fetchall()
+
+        return filtered_product
+
+    def get_product_count(self, product_info, session):
+        """ 상품 필터링 결과 카운트 데이터 전달
+
+        쿼리 파라미터에 따른 필터링된 상품 리스트의 개수를 전달합니다.
+
+        args:
+            product_info: 필터링을 위한 상품 정보
+            session: 데이터베이스 session 객체
+
+        returns :
+            200: 필터링된 상품 결과 개수
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-13 (고지원): 초기 생성
+        """
         count_query = """
             SELECT
                 COUNT(*) AS p_count
@@ -177,32 +267,26 @@ class ProductDao:
 
         # 조회 기간 시작
         if product_info.get('filterDateFrom', None):
-            filter_query += " AND p_info.created_at >= :filterDateFrom"
             count_query += " AND p_info.created_at >= :filterDateFrom"
 
         # 조회 기간 끝
         if product_info.get('filterDateTo', None):
-            filter_query += " AND p_info.created_at <= :filterDateTo"
             count_query += " AND p_info.created_at <= :filterDateTo"
 
         # 진열 여부
         if product_info.get('exhibitionYn', None) in (0, 1):
-            filter_query += " AND p_info.is_displayed = :exhibitionYn"
             count_query += " AND p_info.is_displayed = :exhibitionYn"
 
         # 할인 여부
         if product_info.get('discountYn', None) in (0, 1):
-            filter_query += " AND p_info.is_promotion = :discountYn"
             count_query += " AND p_info.is_promotion = :discountYn"
 
         # 판매 여부
         if product_info.get('sellYn', None) in (0, 1):
-            filter_query += " AND p_info.is_on_sale = :sellYn"
             count_query += " AND p_info.is_on_sale = :sellYn"
 
         # 셀러 속성
         if product_info.get('mdSeNo', None):
-            filter_query += " AND s_attr.id = :mdSeNo"
             count_query += " AND s_attr.id = :mdSeNo"
 
         # 상품 검색: 상품명
@@ -211,7 +295,6 @@ class ProductDao:
             q = product_info['filterKeyword']
             product_info['filterKeyword'] = f'%{q}%'
 
-            filter_query += " AND p_info.name LIKE :filterKeyword"
             count_query += " AND p_info.name LIKE :filterKeyword"
 
         # 상품 검색: 상품 번호
@@ -219,7 +302,6 @@ class ProductDao:
             q = product_info['filterKeyword']
             product_info['filterKeyword'] = f'%{q}%'
 
-            filter_query += " AND p_info.product_id = :filterKeyword"
             count_query += " AND p_info.product_id = :filterKeyword"
 
         # 상품 검색: 상품 코드
@@ -227,7 +309,6 @@ class ProductDao:
             q = product_info['filterKeyword']
             product_info['filterKeyword'] = f'%{q}%'
 
-            filter_query += " AND p_info.product_code = :filterKeyword"
             count_query += " AND p_info.product_code = :filterKeyword"
 
         # 셀러명 검색
@@ -235,28 +316,13 @@ class ProductDao:
             name = product_info['mdName']
             product_info['mdName'] = f'%{name}%'
 
-            filter_query += " AND s_info.korean_name LIKE :mdName"
             count_query += " AND s_info.korean_name LIKE :mdName"
 
-        # 엑셀 다운을 위한 상품 id list
-        if product_info.get('product_id', None):
-            for idx, id in enumerate(product_info.get('product_id', None)):
-                if idx == 0:
-                    filter_query += " AND p.id = " + id
-                filter_query += " OR p.id = " + id
+        counted_product = session.execute(count_query, product_info).fetchone()
 
-        # pagination
-        if product_info.get('filterLimit', None):
-            filter_query += " LIMIT :filterLimit"
+        return counted_product
 
-        # pagination
-        if product_info.get('page', None):
-            filter_query += " OFFSET :page"
 
-        filtered_product = session.execute(filter_query, product_info).fetchall()
-        counted_product = session.execute(count_query, product_info).fetchall()
-
-        return filtered_product, counted_product
 
     def get_product(self, product_id, session):
         """ 상품 수정 시 기존 상세 데이터 전달
@@ -505,7 +571,7 @@ class ProductDao:
         # 2. product_info 테이블에 데이터를 입력한다.
         image_list = product_info['new_images']
 
-        # 3. 이미지 리스트의 첫 번째 이미지를 대표 이미지로 지정한다.
+        # 이미지 리스트의 첫 번째 이미지를 대표 이미지로 지정한다.
         product_info['main_img'] = image_list[0]
 
         insert_query = """
@@ -565,7 +631,7 @@ class ProductDao:
 
         row = session.execute(insert_query, product_info).lastrowid
 
-        # 4. image 테이블에 데이터를 입력한다.
+        # 3. image 테이블에 데이터를 입력한다.
         for idx, image in enumerate(image_list):
             image_info = {
                 'image_url' : image,

@@ -1,7 +1,7 @@
 import re
+from datetime import datetime
 
 from werkzeug.utils import secure_filename
-from flask import request
 
 from config import get_s3_resource
 from utils import allowed_file
@@ -73,15 +73,13 @@ class ProductService:
         """
         s3_resource = get_s3_resource()
 
-        # 기존 이미지가 새로운 이미지 리스트에 없을 경우 s3에서 삭제한다.
         for old_img in product_info['images']:
 
             # 이미지 url 에서 파일 이름을 가져온다.
             file_name = re.findall('https:\/\/brandi-images\.s3\.ap-northeast-2\.amazonaws\.com\/(.*)', old_img)
 
+            # 기존 이미지가 새로운 이미지 리스트에 없을 경우 s3 서버에서 이미지를 삭제한다.
             if old_img not in product_info['new_images']:
-
-                # 기존 이미지가 새로운 이미지 리스트에 없을 경우 s3 서버에서 이미지를 삭제한다.
                 s3_resource.delete_object(Bucket = 'brandi-images', Key = f'{file_name[0]}')
 
         self.product_dao.update_product(product_info, session)
@@ -111,14 +109,11 @@ class ProductService:
             if message:
                 return message
 
-            # 해킹으로부터 파일 이름 보호
-            image_filename = secure_filename(image.filename)
-
             # s3 서버에 이미지 업로드
-            s3_resource.put_object(Body = image, Bucket = 'brandi-images', Key = f'{product_code}_{image_filename}', ContentType = 'image/jpeg')
+            s3_resource.put_object(Body = image, Bucket = 'brandi-images', Key = f'{product_code}_{image.filename}', ContentType = 'image/jpeg')
 
             # 데이터베이스에 저장할 이미지 url 을 리스트에 추가한다.
-            image_url = f'https://brandi-images.s3.ap-northeast-2.amazonaws.com/{product_code}_{image_filename}'
+            image_url = f'https://brandi-images.s3.ap-northeast-2.amazonaws.com/{product_code}_{image.filename}'
             image_urls.append(image_url)
 
         return image_urls
@@ -136,6 +131,20 @@ class ProductService:
         products = self.product_dao.get_products(filter_dict, session)
 
         return products
+
+    def get_product_count(self, product_info, session):
+        """ 상품 조회 결과 개수
+
+        Authors:
+            고지원
+
+        History:
+            2020-10-13 (고지원): 초기 생성
+        """
+
+        count = self.product_dao.get_product_count(product_info, session)
+
+        return count
 
     def get_product(self, product_id, session):
         """ 상품 상세 데이터 전달
@@ -186,6 +195,7 @@ class ProductService:
         filter_dict = {
             'product_id': id_list
         }
+        res = self.product_dao.get_products(filter_dict, session)
 
         df = pd.DataFrame({
             "등록일": product.created_at,
@@ -199,7 +209,7 @@ class ProductService:
             "할인가": product.discount_price,
             "판매여부": product.is_on_sale,
             "진열여부": product.is_displayed,
-            "할인여부": product.is_promotion} for product in self.product_dao.get_products(filter_dict, session))
+            "할인여부": product.is_promotion} for product in res)
 
         df.to_excel(writer, 'sheet1')
         writer.save()

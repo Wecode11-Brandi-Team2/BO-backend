@@ -547,7 +547,7 @@ class SellerDao:
         # DB에 있는 한글 셀러명 중 인자로 넘어온 kor_name이 있는지 조회하는 쿼리문
         seller_kor_name_statement = """
             SELECT
-                count(korean_name)
+                count(*)
             FROM seller_info
             WHERE korean_name = :korean_name 
             AND is_deleted = 0
@@ -576,7 +576,7 @@ class SellerDao:
         # DB에 있는 한글 셀러명 중 인자로 넘어온 eng_name이 있는지 조회하는 쿼리문
         seller_eng_name_statement = """
             SELECT
-                count(eng_name)
+                count(*)
             FROM seller_info
             WHERE eng_name = :eng_name
             AND is_deleted = 0

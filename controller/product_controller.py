@@ -100,15 +100,15 @@ def create_product_endpoints(product_service, Session):
             filter_dict['filterDateTo'] = args[10]
 
             # 상품 정보
-            products = product_service.get_products(filter_dict, session)[0]
+            products = product_service.get_products(filter_dict, session)
 
             # 상품 쿼리 결과 count
-            count_info = product_service.get_products(filter_dict, session)[1]
+            count_info = product_service.get_product_count(filter_dict, session)
 
             body = {
-                'order'              : [dict(product) for product in products],
-                'page_number'        : count_info[0].p_count,
-                'total_order_number' : round(count_info[0].p_count / filter_dict['filterLimit'])
+                'orders'             : [dict(product) for product in products],
+                'page_number'        : count_info.p_count,
+                'total_order_number' : round(count_info.p_count / filter_dict['filterLimit'])
             }
 
             return jsonify(body), 200
@@ -117,6 +117,7 @@ def create_product_endpoints(product_service, Session):
             return jsonify(({'message': 'ERROR_IN_SQL_SYNTAX'})), 500
 
         except Exception as e:
+            traceback.print_exc()
             return jsonify({'message': f'{e}'}), 500
 
         finally:
@@ -199,7 +200,10 @@ def create_product_endpoints(product_service, Session):
 
     @product_app.route('/excel', methods=['GET'], endpoint='make_excel')
     @login_required(Session)
-    def make_excel():
+    @validate_params(
+        Param('product_id', GET, list, required=False)
+    )
+    def make_excel(*args):
         """ 상품 정보 엑셀 다운로드 API
 
         전체 상품 또는 선택 상품의 정보를 excel 파일로 다운로드 합니다.
@@ -220,7 +224,7 @@ def create_product_endpoints(product_service, Session):
         session = Session()
         try:
             # 선택한 상품들의 id를 list 로 받는다.
-            id_list = request.args.getlist('product_id')
+            id_list = args[0]
 
             # service 의 make_excel 함수를 호출한다.
             product_service.make_excel(id_list, session)
@@ -228,9 +232,11 @@ def create_product_endpoints(product_service, Session):
             return jsonify({'message': 'SUCCESS'}), 200
 
         except exc.ProgrammingError:
+            traceback.print_exc()
             return jsonify({'message': 'ERROR_IN_SQL_SYNTAX'}), 500
 
         except Exception as e:
+            traceback.print_exc()
             return jsonify({'message': f'{e}'}), 500
 
         finally:
@@ -356,6 +362,7 @@ def create_product_endpoints(product_service, Session):
         """
         session = Session()
         image_urls = ''
+        is_success = False
         try:
             # 상품명에 ' 또는 " 포함 되었는지 체크
             pattern = re.compile('[\"\']')
@@ -426,34 +433,29 @@ def create_product_endpoints(product_service, Session):
 
             session.commit()
 
+            is_success = True
+
             return jsonify({'message': 'SUCCESS'}), 200
 
         except KeyError:
-            session.rollback()
-            delete_image_in_s3(image_urls, None)
             return jsonify({'message': 'KEY_ERROR'}), 400
 
         except exc.IntegrityError:
-            session.rollback()
-            delete_image_in_s3(image_urls, None)
             return jsonify({'message': 'INTEGRITY_ERROR'}), 400
 
         except exc.InvalidRequestError:
-            session.rollback()
-            delete_image_in_s3(image_urls, None)
             return jsonify({'message': 'INVALID_REQUEST'}), 400
 
         except exc.ProgrammingError:
-            session.rollback()
-            delete_image_in_s3(image_urls, None)
             return jsonify({'message': 'ERROR_IN_SQL_SYNTAX'}), 500
 
         except Exception as e:
-            session.rollback()
-            delete_image_in_s3(image_urls, None)
             return jsonify({'message': f'{e}'}), 500
 
         finally:
+            if is_success is False:
+                session.rollback()
+                delete_image_in_s3(image_urls, None)
             session.close()
 
     @product_app.route('/update', methods=['POST'], endpoint='update_product')
@@ -482,6 +484,7 @@ def create_product_endpoints(product_service, Session):
             2020-10-10 (고지원): 초기 생성
         """
         session = Session()
+        is_success = False
         try:
             # 상품 입력을 위한 데이터를 받는다.
             old_images = request.form['images'].split(',')
@@ -532,34 +535,29 @@ def create_product_endpoints(product_service, Session):
 
             session.commit()
 
+            is_success = True
+
             return jsonify({'message': 'SUCCESS'}), 200
 
         except KeyError:
-            session.rollback()
-            delete_image_in_s3(old_images, new_images)
             return jsonify({'message': 'KEY_ERROR'}), 400
 
         except exc.IntegrityError:
-            session.rollback()
-            delete_image_in_s3(old_images, new_images)
-            return jsonify({'message': 'DUPLICATE_DATA'}), 400
+            return jsonify({'message': 'INTEGRITY_DATA'}), 400
 
         except exc.InvalidRequestError:
-            session.rollback()
-            delete_image_in_s3(old_images, new_images)
             return jsonify({'message': 'INVALID_REQUEST'}), 400
 
         except exc.ProgrammingError:
-            session.rollback()
-            delete_image_in_s3(old_images, new_images)
             return jsonify({'message': 'ERROR_IN_SQL_SYNTAX'}), 500
 
         except Exception as e:
-            session.rollback()
-            delete_image_in_s3(old_images, new_images)
             return jsonify({'message': f'{e}'}), 500
 
         finally:
+            if is_success is False:
+                session.rollback()
+                delete_image_in_s3(old_images, new_images)
             session.close()
 
     return product_app

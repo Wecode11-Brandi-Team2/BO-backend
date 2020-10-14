@@ -67,7 +67,7 @@ def create_qna_endpoints(services, Session):
         valid_param['filterDateFrom']  = args[5] # 등록일 ~부터
         valid_param['filterDateTo']    = args[6] # 등록일 ~까지
         valid_param['filterLimit']     = args[7] if args[7] else 20 # pagination limit
-        valid_param['page']            = args[8] if args[8] else 0 # page number
+        valid_param['page']            = args[8] if args[8] else 1 # page number
 
         # decorator로부터 받아온 seller info를 가진 g 객체
         seller_info = g.seller_info

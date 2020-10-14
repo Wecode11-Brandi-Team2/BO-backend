@@ -182,8 +182,8 @@ class SellerDao:
                 site_url,
                 start_at
             FROM seller_info
-            JOIN sellers ON sellers.id = seller_info.seller_id
-            JOIN managers ON managers.id = seller_info.manager_id
+            INNER JOIN sellers ON sellers.id = seller_info.seller_id
+            INNER JOIN managers ON managers.id = seller_info.manager_id
             WHERE seller_info.end_date = '9999-12-31 23:59:59'
             AND seller_info.is_deleted = 0
             AND sellers.is_deleted = 0
@@ -195,8 +195,8 @@ class SellerDao:
             SELECT 
                 COUNT(0) as filtered_seller_count
             FROM seller_info
-            JOIN sellers ON sellers.id = seller_info.seller_id
-            JOIN managers ON managers.id = seller_info.manager_id
+            INNER JOIN sellers ON sellers.id = seller_info.seller_id
+            INNER JOIN managers ON managers.id = seller_info.manager_id
             WHERE seller_info.end_date = '9999-12-31 23:59:59'
             AND seller_info.is_deleted = 0
             AND sellers.is_deleted = 0
@@ -275,7 +275,7 @@ class SellerDao:
         # 페이지네이션
         if valid_param.get('filterLimit', None):
             if valid_param.get('page', None):
-                valid_param['offset'] = valid_param['page'] * valid_param['filterLimit']
+                valid_param['offset'] = (valid_param['page']-1) * valid_param['filterLimit']
                 select_seller_list_statement += " ORDER BY sellers.id DESC LIMIT :filterLimit OFFSET :offset"
             else:
                 select_seller_list_statement += " ORDER BY sellers.id DESC LIMIT :filterLimit"
@@ -285,7 +285,7 @@ class SellerDao:
         seller_info = [ dict(seller) for seller in seller_infos ]
 
         # 쿼리파라미터가 들어오면 필터 된 셀러를 카운트하고 리턴 값에 포함시킨다. 쿼리파라미터가 들어오지않으면 전체 셀러 수를 포함시킴.
-        seller_count = int(session.execute(filter_query_values_count_statement, valid_param).fetchone()[0])
+        seller_count = session.execute(filter_query_values_count_statement, valid_param).fetchone()[0]
 
         # 마지막 페이지 번호 출력. filterLimit으로 count를 나누고 그 값을 올림해주어 Return
         page_number = math.ceil(seller_count / valid_param['filterLimit'])
@@ -552,8 +552,8 @@ class SellerDao:
             WHERE korean_name = :korean_name 
             AND is_deleted = 0
         """
-        # rowcount로 일치하는 한글 셀러명의 수를 count한다. 있을 경우 1, 없을 경우 0
-        seller_kor_name = int(session.execute(seller_kor_name_statement, kor_name).fetchone()[0])
+        # count로 쿼리문을 만족하는 갯수를 가져온다. 있을 경우 1, 없을 경우 0
+        seller_kor_name = session.execute(seller_kor_name_statement, kor_name).fetchone()[0]
         return seller_kor_name
 
     def check_duplication_eng(self, eng_name, session):
@@ -581,8 +581,8 @@ class SellerDao:
             WHERE eng_name = :eng_name
             AND is_deleted = 0
         """
-        # rowcount로 일치하는 영문 셀러명의 수를 count한다. 있을 경우 1, 없을 경우 0
-        seller_eng_name = int(session.execute(seller_eng_name_statement, eng_name).fetchone()[0])
+        # count로 쿼리문을 만족하는 갯수를 가져온다. 있을 경우 1, 없을 경우 0
+        seller_eng_name = session.execute(seller_eng_name_statement, eng_name).fetchone()[0]
         return seller_eng_name
 
     def get_password(self, change_info, session):

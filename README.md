@@ -7,7 +7,7 @@
 ## Project Period & Members
 
 - 개발 기간 : 2020/09/14 ~ 2020/10/09 (4주)
-- 개발 인원 : 프론트엔드 5명([김동호](https://github.com/psy082), [유휘찬](https://github.com/chan-97), [이도윤](https://github.com/doyoonear), [이상훈](https://github.com/sanghunlee-711), [조은별](https://github.com/choaceb)), 백엔드 5명([고지원](https://github.com/Gxone), [권창식](https://github.com/changsikkwon), [김해준](https://github.com/hj8853), [문태기](https://github.com/orangemush), [이용민](https://github.com/eymin1259))
+- 개발 인원 : 프론트엔드 5명([김동호](https://github.com/psy082), [유휘찬](https://github.com/chan-97), [이도윤](https://github.com/doyoonear), [이상훈](https://github.com/sanghunlee-711), [조은별](https://github.com/choaceb)), 백엔드 5명( [이용민](https://github.com/eymin1259,) [고지원](https://github.com/Gxone), [권창식](https://github.com/changsikkwon), [김해준](https://github.com/hj8853), [문태기](https://github.com/orangemush))
 
 
 ## Features
